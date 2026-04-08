@@ -5,3 +5,5 @@ scipy
 requests
 pywin32
 PyQt6
+edge-tts
+pygame-ce

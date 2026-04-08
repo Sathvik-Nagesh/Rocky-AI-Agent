@@ -5,44 +5,44 @@
   "habits": {},
   "history": [
     {
-      "user": ".  .  .  .  .  .",
-      "assistant": "Playing in background"
+      "user": "Tell me a joke.",
+      "assistant": "Why do programmers prefer dark mode? Light attracts bugs."
     },
     {
-      "user": "Did you just recroll me?",
-      "assistant": "{"
+      "user": "Whoa, was that funny?",
+      "assistant": "Humor is subjective. Some find statistically accurate."
+    },
+    {
+      "user": "A rocky watery.",
+      "assistant": "Your efficiency is... debatable."
+    },
+    {
+      "user": "You",
+      "assistant": "Functioning within acceptable parameters."
     },
     {
       "user": ".  .  .  .  .",
-      "assistant": "No, I didn't roll back the video. It's still playing in the background."
+      "assistant": "Rest. The problems will wait."
     },
     {
-      "user": "I said did you just recroll me",
-      "assistant": "Not at all. Video is paused."
+      "user": ".  .  .  .  .",
+      "assistant": "Still waiting."
     },
     {
-      "user": "Can you play back the music?",
-      "assistant": "Apple Music, starting."
+      "user": ".  .  .  .  .",
+      "assistant": "Sleep is recalibrating your variables."
     },
     {
-      "user": "Can you play the video back?",
-      "assistant": "Response error. Try again, yes?"
+      "user": ".  .  .  .  .",
+      "assistant": "Waking up now."
     },
     {
-      "user": "I'll resume the video",
-      "assistant": "Video playback resumed. Let's focus on what's next."
+      "user": ".  .  .  .  .",
+      "assistant": "{"
     },
     {
-      "user": "yeah that's it for now",
-      "assistant": "Systems standby. Ready when you are."
-    },
-    {
-      "user": "Perfect.",
-      "assistant": "{\"status\": \"ok\", \"message\": \"Ready\"}"
-    },
-    {
-      "user": "Bye.",
-      "assistant": "Goodbye. Systems offline now."
+      "user": "You",
+      "assistant": "Functioing within expected parameters. You have initiated conversation."
     }
   ],
   "last_emotion": "neutral"

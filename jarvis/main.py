@@ -135,14 +135,16 @@ class VoiceWorker(QObject):
         # Time-aware greeting
         from datetime import datetime
         hour = datetime.now().hour
-        if hour < 12:
+        if 0 <= hour < 5:
+            greeting = "It is past midnight. You are still running. Noted. What do you need?"
+        elif hour < 12:
             greeting = "Morning. Systems online. What do we have today?"
         elif hour < 17:
             greeting = "Afternoon. All modules initialized. Ready when you are."
         elif hour < 21:
             greeting = "Evening. Online and standing by. What do you need?"
         else:
-            greeting = "Up late. Noted. I am here. What do you need?"
+            greeting = "Late evening. Still here. What do you need?"
 
         self._sig.ai_text.emit(greeting)
         self._safe_speak(greeting)

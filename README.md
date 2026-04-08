@@ -85,8 +85,8 @@ Rocky/
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/yourusername/Rocky.git
-cd Rocky
+git clone https://github.com/Sathvik-Nagesh/Rocky-AI-Agent
+cd Jarvis
 ```
 
 ### 2. Create a virtual environment

@@ -1,0 +1,25 @@
+2026-04-09 02:42:14,405 [INFO] pygame-ce audio mixer initialized.
+2026-04-09 02:42:18,140 [INFO] Loading wake-word Whisper model (tiny.en)...
+2026-04-09 02:42:18,408 [INFO] HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny.en/revision/main "HTTP/1.1 200 OK"
+2026-04-09 02:42:18,587 [INFO] Wake-word model ready.
+2026-04-09 02:42:23,705 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:42:40,093 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:43:12,344 [ERROR] edge-tts playback failed: Cannot connect to host speech.platform.bing.com:443 ssl:<ssl.SSLContext object at 0x0000020BA69FB5F0> [getaddrinfo failed] — falling back to SAPI5
+2026-04-09 02:43:21,721 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:43:35,023 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:43:51,905 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:44:05,712 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:44:19,754 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:44:29,194 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:44:42,658 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:44:56,242 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:45:09,676 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:45:21,936 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:45:34,099 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:45:47,265 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:45:57,762 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:46:09,948 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:46:20,715 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:46:29,954 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:46:35,488 [INFO] Processing audio with duration 00:04.928
+2026-04-09 02:46:54,462 [INFO] Processing audio with duration 00:04.928
