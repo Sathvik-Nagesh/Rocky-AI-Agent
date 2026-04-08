@@ -1,0 +1,49 @@
+{
+  "user_preferences": {
+    "music_app": "apple_music"
+  },
+  "habits": {},
+  "history": [
+    {
+      "user": ".  .  .  .  .  .",
+      "assistant": "Playing in background"
+    },
+    {
+      "user": "Did you just recroll me?",
+      "assistant": "{"
+    },
+    {
+      "user": ".  .  .  .  .",
+      "assistant": "No, I didn't roll back the video. It's still playing in the background."
+    },
+    {
+      "user": "I said did you just recroll me",
+      "assistant": "Not at all. Video is paused."
+    },
+    {
+      "user": "Can you play back the music?",
+      "assistant": "Apple Music, starting."
+    },
+    {
+      "user": "Can you play the video back?",
+      "assistant": "Response error. Try again, yes?"
+    },
+    {
+      "user": "I'll resume the video",
+      "assistant": "Video playback resumed. Let's focus on what's next."
+    },
+    {
+      "user": "yeah that's it for now",
+      "assistant": "Systems standby. Ready when you are."
+    },
+    {
+      "user": "Perfect.",
+      "assistant": "{\"status\": \"ok\", \"message\": \"Ready\"}"
+    },
+    {
+      "user": "Bye.",
+      "assistant": "Goodbye. Systems offline now."
+    }
+  ],
+  "last_emotion": "neutral"
+}
