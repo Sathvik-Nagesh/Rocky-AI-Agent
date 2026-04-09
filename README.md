@@ -9,30 +9,38 @@ A fully local, modular AI voice assistant inspired by **JARVIS** and **Rocky fro
 ![Whisper](https://img.shields.io/badge/STT-faster--whisper-orange?style=flat-square)
 ![TTS](https://img.shields.io/badge/TTS-edge--tts-blueviolet?style=flat-square)
 ![UI](https://img.shields.io/badge/UI-PyQt6-purple?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
 
 ---
 
-## Features
+### 🧬 Current Evolution: Phase 11-13 (The Architect)
+*   **Autonomous Web Agent (Playwright)**: Rocky now has a literal browser "hand." He can research live topics, bypass bot checks, and summarize findings from the live web.
+*   **Work Shadow Context**: Intent intelligence that tracks your active window (VS Code, Chrome, etc.). Rocky knows *what* you're working on without being told.
+*   **Daily Standup Architect**: Automated work reporting. Rocky analyzes his own activity logs to produce formatted standup reports of your day.
+*   **Conversation State Engine**: Advanced state tracking for "Yes/No" confirmations, ensuring Rocky never loses the thread during complex multi-step tasks.
+*   **Acoustic Voice Hardening**: Suppression of ambient fan noise and improved VAD (Voice Activity Detection) for high-performance PC environments.
 
+---
+
+### 🚀 Quick Start
+1.  **Dependencies**: `python -m pip install -r jarvis/requirements.txt`
+2.  **Web Agent Setup**: `python -m playwright install chromium`
+3.  **Launch**: `python jarvis/main.py`
+
+---
+
+### 🧠 Core Features
 | Capability | Tech | Description |
 |---|---|---|
-| 🎙️ Voice Activity Detection | `sounddevice` + RMS | Records only when you speak, stops on silence |
-| 🧠 LLM Brain | `llama3.2:3b` via Ollama | Multi-turn conversation with JSON schema enforcement |
-| 🔊 Neural TTS | `edge-tts` (Microsoft Neural) | Natural human-like voice with SAPI5 offline fallback |
-| 🖥️ JARVIS HUD | PyQt6 glassmorphism overlay | Waveform, typing animation, dynamic info bar |
-| 🧠 Semantic Memory | ChromaDB vector database | Infinite memory without bloating the LLM context |
-| 📂 Document RAG | ChromaDB + file ingestion | Ask questions about your own local files |
-| 👁️ Vision | `pyautogui` + LLaVA | "What's on my screen?" — screenshot analysis |
-| 🔍 Web Research | DuckDuckGo + BeautifulSoup | Rocky silently reads articles and speaks the answer |
-| 🖥️ Agentic Terminal | Sandboxed subprocess | Rocky writes and executes scripts with your permission |
-| 👀 Passive Observer | `pygetwindow` | Monitors your active app and nudges you contextually |
-| 🎵 App Control | `subprocess` + protocols | Opens Chrome, Spotify, Apple Music, VS Code, etc. |
-| 🌤️ Weather | `wttr.in` | No API key needed |
-| ⏰ Reminders | `threading.Timer` | Natural language ("in 5 minutes") |
-| 😐 Emotion Sensing | Keyword classifier | Adapts Rocky's tone based on your mood |
-| 🔌 Plugin System | Dynamic module loader | Drop `.py` files in `plugins/` — auto-loaded |
-| 🎙️ Wake Word | `openWakeWord` (ONNX) | ~1% CPU background wake word detection |
+| 🎙️ Voice Detection | `sounddevice` + RMS | Records only when you speak, stops on silence. |
+| 🛡️ Sentinel Sandbox | Python AST Allowlist | Secure execution of terminal scripts via AST validation. |
+| 🧠 LLM Brain | `llama3.2:3b` | Multi-turn conversation with JSON schema enforcement. |
+| 🔊 Local Neural TTS | `Piper` (Local ONNX) | 100% offline neural voice with `edge-tts` fallback. |
+| ✨ Voice Emotion | Spectral Analysis | Detects acoustic stress and energy from your voice. |
+| 🖥️ Shadow IQ | Window Title Monitoring | Senses when you are coding vs. browsing for context. |
+| 👁️ Vision | `pyautogui` + LLaVA | "What's on my screen?" — screenshot analysis. |
+| 🛠️ Self-Evolution | Agentic Plugin Maker | Ask Rocky to "evolve" — he writes and installs his own plugins. |
+| 🧹 Chaos Fixer | `shutil` | Organizes messy folders (Desktop/Downloads) by context. |
+| 🗑️ Data Privacy | `purge_memory()` | Say "Wipe my memory" to instantly delete all local data. |
 
 ---
 

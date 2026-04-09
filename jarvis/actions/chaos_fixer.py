@@ -20,6 +20,14 @@ _EXT_MAP = {
 
 def organize_folder(folder_path: str) -> str:
     """Sort files in a folder into categorical subdirectories."""
+    # Check for OneDrive fallback if the primary path is missing or empty
+    if not os.path.exists(folder_path) or not os.listdir(folder_path):
+        home = os.path.expanduser("~")
+        dirname = os.path.basename(folder_path)
+        one_drive_path = os.path.join(home, "OneDrive", dirname)
+        if os.path.exists(one_drive_path):
+            folder_path = one_drive_path
+
     if not os.path.exists(folder_path):
         return f"Folder {folder_path} doesn't exist."
 

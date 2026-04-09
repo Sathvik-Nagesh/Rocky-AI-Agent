@@ -45,13 +45,27 @@ def generate_response(user_input: str, history: list[dict] | None = None) -> str
         messages.append({"role": "user",      "content": str(turn.get("user", ""))})
         messages.append({"role": "assistant", "content": str(turn.get("assistant", ""))})
 
+    # Inject Dynamic Rules (Self-Correction Loop)
+    from brain.reflector import get_dynamic_rules
+    dynamic_rules = get_dynamic_rules()
+    if dynamic_rules:
+        messages.append({"role": "system", "content": f"Self-correction rules to follow:\n{dynamic_rules}"})
+
     # Only query vector DB for substantial inputs — skip for confirmations, short replies
     if len(user_input) > _VECTOR_QUERY_MIN_LEN:
         semantic_context = vector_memory.search_memories(user_input, top_k=2)
-        if semantic_context:
+        # Also query document RAG for shadow learner context
+        from brain.file_rag import query_documents
+        doc_context = query_documents(user_input, top_k=2)
+        
+        combined_context = []
+        if semantic_context: combined_context.extend(semantic_context)
+        if doc_context: combined_context.extend(doc_context)
+
+        if combined_context:
             messages.append({
                 "role": "system",
-                "content": f"Relevant past context:\n{chr(10).join(semantic_context)}"
+                "content": f"Relevant past and file context:\n{chr(10).join(combined_context)}"
             })
 
     messages.append({"role": "user", "content": user_input})

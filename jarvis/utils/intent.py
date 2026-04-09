@@ -109,11 +109,36 @@ def detect_intent(text: str) -> dict | None:
             if any(kw in lowered for kw in keywords):
                 return {"intent": "open_app", "action": app_key}
 
+    if any(kw in lowered for kw in ["daily standup", "generate report", "what did i do today", "work summary"]):
+        return {"intent": "system_control", "action": "standup"}
+
+    if any(kw in lowered for kw in ["research", "find out info about", "deep dive into", "tell me more about"]):
+        # Extract subject
+        subject = lowered.replace("research", "").replace("find out info about", "").strip()
+        return {"intent": "deep_research", "action": subject or "general topics"}
+
+    if any(p in lowered for p in ["open file", "open the file", "open image", "open document"]):
+            # Extract filename if possible
+            m = re.search(r"open (?:the |that )?(?:file|image|document|photo|video)?\s+([a-zA-Z0-9_\-\.]+)", lowered)
+            if m:
+                return {"intent": "file_operation", "action": f"open:{m.group(1).strip()}"}
+            return {"intent": "file_operation", "action": "open:recent"}
+
+        for app_key, keywords in _apps.items():
+            if any(kw in lowered for kw in keywords):
+                return {"intent": "open_app", "action": app_key}
+
     # ── Play music ────────────────────────────────────────────────────────────
-    if re.search(r"\b(play|start|put on|turn on)\b.{0,15}\b(music|song|track|playlist)\b", lowered):
-        return {"intent": "play_music", "action": "apple_music"}
-    if any(kw in lowered for kw in ["music please", "some music", "play something"]):
-        return {"intent": "play_music", "action": "apple_music"}
+    if re.search(r"\b(play|start|put on|turn on)\b.{0,15}\b(music|song|track|playlist)\b", lowered) or \
+       any(kw in lowered for kw in ["music please", "some music", "play something"]) or \
+       re.search(r"\bplay\b\s+(.+)", lowered):
+        
+        if "youtube" in lowered:
+            return {"intent": "play_music", "action": "youtube music" if "music" in lowered else "youtube", "query": text}
+        if "spotify" in lowered:
+            return {"intent": "play_music", "action": "spotify", "query": text}
+            
+        return {"intent": "play_music", "action": "apple_music", "query": text}
 
     # ── System control (NEGATION-SAFE + CONFIRMATION-GATED) ───────────────────
     _sys = {

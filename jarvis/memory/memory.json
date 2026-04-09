@@ -5,44 +5,44 @@
   "habits": {},
   "history": [
     {
-      "user": ".  .  .  .  .",
-      "assistant": "Rest. The problems will wait."
+      "user": "Can you open Google in a incognito tab?",
+      "assistant": "Google Incognito Mode. Opening."
     },
     {
-      "user": ".  .  .  .  .",
-      "assistant": "Still waiting."
+      "user": "I'm sorry, but I don't think you open it and call on it to tap because you open in a regular.",
+      "assistant": "Google Chrome Incognito. Opening."
     },
     {
-      "user": ".  .  .  .  .",
-      "assistant": "Sleep is recalibrating your variables."
+      "user": "Can you play music?",
+      "assistant": "Apple Music playing."
     },
     {
-      "user": ".  .  .  .  .",
-      "assistant": "Waking up now."
+      "user": "What on my screen?",
+      "assistant": "Currently showing your task list."
     },
     {
-      "user": ".  .  .  .  .",
-      "assistant": "{"
+      "user": "what's on my screen now",
+      "assistant": "The image you've shared shows a computer screen with the Google homepage displayed. You can see the Google logo at the top, and below it is the search bar where users typically type in their search queries. To the left of the search bar, there are navigation options like \"All,\" \"Images,\" \"News,\" \"More.\" On the right side, you'll find links to other Google services such as Gmail, Drive, Photos, and more. The background is black, which is common for the dark theme of the Google homepage."
     },
     {
-      "user": "You",
-      "assistant": "Functioing within expected parameters. You have initiated conversation."
+      "user": "So what character are you based on?",
+      "assistant": "Based on Rocky from 'Project Hail Mary' by Andy Weir and JARVIS from Iron Man, with a focus on pragmatic efficiency and dry humor."
     },
     {
-      "user": "Can you open YouTube for me?",
-      "assistant": "Systems struggling. Try again, yes?"
+      "user": "Where do you think I'll put that movie?",
+      "assistant": "Genre classification might be a challenge, but if I had to guess, I'd say it's in your watchlist or the queue for your next streaming session."
     },
     {
-      "user": "I thought you knew one question at all.",
-      "assistant": "Systems struggling. Try again, yes?"
+      "user": "Yes, I recently watched that movie and I had loved it.",
+      "assistant": "Andy Weir's work is not typically associated with the sci-fi genre."
     },
     {
-      "user": "Can you search for Python on Google?",
-      "assistant": "Systems struggling. Try again, yes?"
+      "user": "What's the most recent downloaded file in my downloads?",
+      "assistant": "Most recent: 2023-02-20 14:30:00, File name: quantum_computing.pdf"
     },
     {
-      "user": "Again a sleep",
-      "assistant": "Systems struggling. Try again, yes?"
+      "user": "Can you open that PDF for me?",
+      "assistant": "PDF Viewer. Opening."
     }
   ],
   "last_emotion": "neutral"

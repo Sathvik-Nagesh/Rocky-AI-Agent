@@ -64,6 +64,10 @@ def _piper_speak(text: str):
             w.setframerate(_piper_voice.config.sample_rate)
             _piper_voice.synthesize(text, w)
 
+        if os.path.getsize(tmp_path) <= 44:
+            logging.debug("Piper generated an empty audio payload (ONNX model incompatibility).")
+            raise RuntimeError("Piper generated an empty audio payload (ONNX model incompatibility).")
+
         if not _ensure_pygame():
             raise RuntimeError("pygame not available")
 

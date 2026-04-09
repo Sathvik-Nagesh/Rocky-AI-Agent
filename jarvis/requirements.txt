@@ -20,3 +20,6 @@ wolframalpha
 piper-tts
 soundfile
 python-dotenv
+playwright            # For Autonomous Web Agent
+playwright-stealth    # To prevent bot detection
+watchdog              # For Shadow Learner (FileSystem monitoring)

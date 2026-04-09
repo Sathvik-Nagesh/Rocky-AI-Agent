@@ -163,13 +163,14 @@ class VoiceWorker(QObject):
 
     def __init__(self, signals: RockySignals):
         super().__init__()
-        self._sig             = signals
-        self._speak_lock      = threading.Lock()
-        self._pending_script  = None   # agentic terminal confirmation
-        self._pending_kill    = None   # process terminator confirmation
-        self._pending_sys     = None   # dangerous system_control confirmation
-        self._pending_plugin  = None   # self-evolution plugin confirmation
-        self._clipboard_queue = []     # pending clipboard observations
+        self._sig               = signals
+        self._speak_lock        = threading.Lock()
+        self._pending_script    = None   
+        self._pending_kill      = None   
+        self._pending_sys       = None   
+        self._pending_plugin    = None   
+        self._last_question_type = None  # Track what Rocky last asked ('plugin', 'script', 'kill', etc.)
+        self._clipboard_queue   = []     
 
     # ── Speech ────────────────────────────────────────────────────────────────
     def _safe_speak(self, text: str):
@@ -189,8 +190,8 @@ class VoiceWorker(QObject):
         intent_name = intent["intent"]
         action_name = intent.get("action")
 
-        # Vision / plugins return their own text directly
-        if intent_name in ("vision", "plugin_action"):
+        # Vision / research / plugins return their own text directly
+        if intent_name in ("vision", "plugin_action", "deep_research"):
             action_result = execute_action(intent)
             response_text = action_result or "Processing complete."
             _respond(self._sig, user_input, response_text)
@@ -236,16 +237,34 @@ class VoiceWorker(QObject):
             self._safe_speak(explanation)
             return
         self._pending_script = result
+        self._last_question_type = "script"
         self._sig.info_text.emit(f"Script ready: {explanation}")
         confirm_msg = f"{explanation}. Say proceed to execute or cancel to abort."
         _respond(self._sig, user_input, confirm_msg)
         self._safe_speak(confirm_msg)
 
+    def save_plugin_action(self, plugin_data: dict):
+        """Helper to save a generated plugin to the filesystem."""
+        from brain.self_evolve import save_plugin
+        result = save_plugin(plugin_data["filename"], plugin_data["code"])
+        _respond(self._sig, "System", result)
+        self._safe_speak(result)
+
     # ── Main loop ─────────────────────────────────────────────────────────────
     def run(self):
         self._sig.status_changed.emit("IDLE")
 
-        # Run self-repair on startup silently — log results but don't speak unless issues found
+        # ── Self-Correction Reflection Loop ───────────────────────────────────
+        from brain.reflector import run_reflection
+        reflection_report = run_reflection()
+        logging.info(f"[REFLECTION] {reflection_report}")
+
+        # ── Shadow Learner (Implicit RAG) ─────────────────────────────────────
+        from brain.shadow_learner import ShadowLearner
+        self.shadow_learner = ShadowLearner(self._sig)
+        self.shadow_learner.start()
+
+        # Run self-repair on startup silently
         startup_issues = diagnose()
         if startup_issues:
             repair_report = self_repair()
@@ -331,67 +350,53 @@ class VoiceWorker(QObject):
                 self._sig.user_text.emit(user_input)
                 print(f"USER : {user_input}")
                 low = user_input.lower()
+                
+                # Work Shadow: Inject active context if relevant
+                from actions.system import get_active_work_context
+                work_context = get_active_work_context()
+                if work_context and len(user_input) > 10:
+                    user_input = f"[System Context: {work_context}]\n" + user_input
 
-                # ── Pending confirmations ─────────────────────────────────────
-                if self._pending_script:
-                    if any(w in low for w in ("proceed", "yes", "do it", "execute", "run it")):
-                        script = self._pending_script
-                        self._pending_script = None
-                        output = execute_script(script.get("code", ""), script.get("language", "python"))
-                        resp = f"Done. Output: {output[:120]}"
-                        _respond(self._sig, user_input, resp)
-                        self._sig.info_text.emit(output[:90])
-                        self._safe_speak(resp)
-                        continue
-                    elif any(w in low for w in ("cancel", "no", "abort", "stop")):
-                        self._pending_script = None
-                        resp = "Script cancelled."
-                        _respond(self._sig, user_input, resp)
-                        self._safe_speak(resp)
-                        continue
-
-                if self._pending_kill:
-                    if any(w in low for w in ("yes", "do it", "kill it", "terminate", "proceed")):
-                        proc_name = self._pending_kill
-                        self._pending_kill = None
-                        result = kill_process_by_name(proc_name)
-                        _respond(self._sig, user_input, result)
-                        self._safe_speak(result)
-                        continue
-                    else:
-                        self._pending_kill = None
-                        resp = "Termination cancelled."
-                        _respond(self._sig, user_input, resp)
-                        self._safe_speak(resp)
-                        continue
-
-                if self._pending_sys:
-                    if any(w in low for w in ("yes", "confirm", "do it", "proceed", "go ahead")):
-                        action = self._pending_sys
-                        self._pending_sys = None
-                        execute_action({"intent": "system_control", "action": action})
-                        resp = f"{action.title()} confirmed. Executing."
-                        _respond(self._sig, user_input, resp)
-                        self._safe_speak(resp)
-                        continue
-                    else:
-                        self._pending_sys = None
-                        resp = "Action cancelled. Systems unchanged."
-                        _respond(self._sig, user_input, resp)
-                        self._safe_speak(resp)
-                        continue
-
-                if self._pending_plugin:
-                    if any(w in low for w in ("yes", "save it", "proceed", "do it", "confirm")):
-                        plugin = self._pending_plugin
-                        self._pending_plugin = None
-                        result = save_plugin(plugin["filename"], plugin["code"])
-                        _respond(self._sig, user_input, result)
-                        self._safe_speak(result)
-                        continue
-                    else:
-                        self._pending_plugin = None
-                        resp = "Plugin discarded."
+                # ── Pending confirmations (State-Aware) ────────────────────────────────
+                if self._last_question_type:
+                    is_yes = any(w in low for w in ("yes", "do it", "proceed", "go ahead", "yep", "sure", "confirmed"))
+                    is_no  = any(w in low for w in ("no", "cancel", "abort", "stop", "nevermind"))
+                    
+                    if is_yes:
+                        if self._last_question_type == "script" and self._pending_script:
+                            script = self._pending_script
+                            self._pending_script = self._last_question_type = None
+                            output = execute_script(script.get("code", ""), script.get("language", "python"))
+                            resp = f"Executed. Result: {output[:120]}"
+                            _respond(self._sig, user_input, resp)
+                            self._safe_speak(resp)
+                            continue
+                        elif self._last_question_type == "kill" and self._pending_kill:
+                            proc_name = self._pending_kill
+                            self._pending_kill = self._last_question_type = None
+                            result = kill_process_by_name(proc_name)
+                            _respond(self._sig, user_input, result)
+                            self._safe_speak(result)
+                            continue
+                        elif self._last_question_type == "sys" and self._pending_sys:
+                            action = self._pending_sys
+                            self._pending_sys = self._last_question_type = None
+                            execute_action({"intent": "system_control", "action": action})
+                            resp = f"{action.title()} confirmed."
+                            _respond(self._sig, user_input, resp)
+                            self._safe_speak(resp)
+                            continue
+                        elif self._last_question_type == "plugin" and self._pending_plugin:
+                            from brain.self_evolve import save_plugin
+                            res = save_plugin(self._pending_plugin["filename"], self._pending_plugin["code"])
+                            self._pending_plugin = self._last_question_type = None
+                            _respond(self._sig, user_input, res)
+                            self._safe_speak(res)
+                            continue
+                    elif is_no:
+                        self._pending_script = self._pending_kill = self._pending_sys = self._pending_plugin = None
+                        self._last_question_type = None
+                        resp = "Action cancelled. Standing down."
                         _respond(self._sig, user_input, resp)
                         self._safe_speak(resp)
                         continue
@@ -399,6 +404,8 @@ class VoiceWorker(QObject):
                 # ── Hard commands ─────────────────────────────────────────────
                 if any(kw in low for kw in ("shut down rocky", "goodbye", "exit rocky")):
                     self._safe_speak("Shutting down. Optimal choice.")
+                    if hasattr(self, "shadow_learner"):
+                        self.shadow_learner.stop()
                     clipboard_mgr.stop()
                     observer.stop()
                     wake.stop()
@@ -439,9 +446,10 @@ class VoiceWorker(QObject):
                         if len(parts) > 1:
                             proc_name = parts[1].strip().split(" ")[0]
                             self._pending_kill = proc_name
-                            follow = f"{reason}. Say yes to terminate {proc_name} or no to leave it."
-                            self._sig.ai_text.emit(follow)
-                            self._safe_speak(follow)
+                        self._last_question_type = "kill"
+                        follow = f"{reason}. Say yes to terminate {proc_name} or no to leave it."
+                        self._sig.ai_text.emit(follow)
+                        self._safe_speak(follow)
                     continue
 
                 if any(kw in low for kw in ("terminate", "kill process", "close process")):
@@ -451,6 +459,7 @@ class VoiceWorker(QObject):
                     if m:
                         proc_name = m.group(2)
                         self._pending_kill = proc_name
+                        self._last_question_type = "kill"
                         confirm = f"About to kill {proc_name}. Say yes to proceed or no to cancel."
                         _respond(self._sig, user_input, confirm)
                         self._safe_speak(confirm)
@@ -493,6 +502,7 @@ class VoiceWorker(QObject):
                         self._safe_speak(result["error"])
                     else:
                         self._pending_plugin = result
+                        self._last_question_type = "plugin"
                         preview = f"Plugin ready: {result['filename']}. Keywords: {', '.join(result['keywords'][:3])}. Say yes to save or no to discard."
                         _respond(self._sig, user_input, preview)
                         self._sig.info_text.emit(f"Plugin: {result['filename']}")
@@ -579,6 +589,7 @@ class VoiceWorker(QObject):
                     if keyword_intent.get("needs_confirmation"):
                         action = keyword_intent["action"]
                         self._pending_sys = action
+                        self._last_question_type = "sys"
                         confirm = f"{action.title()} requested. Are you sure? Say yes to confirm."
                         _respond(self._sig, user_input, confirm)
                         self._safe_speak(confirm)

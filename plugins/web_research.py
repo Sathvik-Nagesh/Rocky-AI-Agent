@@ -41,6 +41,12 @@ def execute(query: str) -> str:
         content = re.sub(r'\s+', ' ', content).strip()
 
         # Step 4: Summarize via local LLM so Rocky doesn't read 10 paragraphs aloud
+        import sys
+        import os
+        jarvis_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "jarvis")
+        if jarvis_path not in sys.path:
+            sys.path.insert(0, jarvis_path)
+            
         from brain.llm import generate_response
         summary_prompt = f"Summarize this text concisely in 2 sentences max, as Rocky: {content[:2000]}"
         

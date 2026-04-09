@@ -181,12 +181,12 @@ class RockyWindow(QWidget):
             Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setMinimumWidth(460)
-        self.setMaximumWidth(520)
+        self.setMinimumWidth(380)
+        self.setMaximumWidth(420)
         # Bottom-right of screen
         from PyQt6.QtWidgets import QApplication
         geo = QApplication.primaryScreen().availableGeometry()
-        self.move(geo.width() - 540, geo.height() - 420)
+        self.move(geo.width() - 440, geo.height() - 340)
 
     def _build_ui(self):
         outer = QVBoxLayout(self)

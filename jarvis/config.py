@@ -18,9 +18,9 @@ RECORDING_DURATION_SECONDS = 5
 RECORDING_SAMPLE_RATE = 16000
 
 # --- Voice Activity Detection (VAD) ---
-VAD_ENERGY_THRESHOLD = 0.015     # Adjust if environment is noisy
-VAD_SILENCE_TIMEOUT  = 1.5       # Seconds of silence before stopping recording
-VAD_MAX_DURATION     = 15.0      # Hard limit on recording length
+VAD_ENERGY_THRESHOLD = 0.035     # Raised from 0.015 to ignore fan noise
+VAD_SILENCE_TIMEOUT  = 1.1       # Shortened from 1.5 to stop faster
+VAD_MAX_DURATION     = 12.0      # Hard limit on recording length
 
 # --- TTS settings ---
 # Piper TTS (Local Neural Voice) - Fast, GPU accelerated, 100% offline

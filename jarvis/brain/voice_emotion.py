@@ -23,9 +23,12 @@ def analyze_voice_features(audio_data: np.ndarray, sample_rate: int = 16000) -> 
     if audio_data is None or len(audio_data) == 0:
         return {"label": "unknown", "confidence": 0.0}
 
-    audio = audio_data.astype(np.float32)
+    audio = audio_data.flatten().astype(np.float32)
     if np.max(np.abs(audio)) > 0:
         audio = audio / np.max(np.abs(audio))
+
+    if len(audio) < 2:
+        return {"label": "neutral", "confidence": 0.0}
 
     # ── RMS Energy ────────────────────────────────────────────────────────────
     rms = float(np.sqrt(np.mean(audio ** 2)))
