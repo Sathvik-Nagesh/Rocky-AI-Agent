@@ -8,6 +8,7 @@ import requests
 import logging
 import time
 from config import OLLAMA_API_CHAT, MODEL_NAME, LLM_NUM_PREDICT, LLM_NUM_CTX, LLM_TEMPERATURE
+from memory.vector_db import vector_memory
 
 def _read_system_prompt() -> str:
     path = os.path.join(os.path.dirname(__file__), "prompt.txt")
@@ -30,6 +31,14 @@ def generate_response(user_input: str, history: list[dict] | None = None) -> str
     for turn in (history or [])[-5:]:
         messages.append({"role": "user",      "content": str(turn.get("user", ""))})
         messages.append({"role": "assistant", "content": str(turn.get("assistant", ""))})
+
+    # Inject Long-Term Semantic Memory
+    semantic_context = vector_memory.search_memories(user_input, top_k=2)
+    if semantic_context:
+        messages.append({
+            "role": "system",
+            "content": f"Here is relevant context from past conversations with the user:\n{semantic_context}"
+        })
 
     messages.append({"role": "user", "content": user_input})
 

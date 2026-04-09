@@ -5,22 +5,6 @@
   "habits": {},
   "history": [
     {
-      "user": "Tell me a joke.",
-      "assistant": "Why do programmers prefer dark mode? Light attracts bugs."
-    },
-    {
-      "user": "Whoa, was that funny?",
-      "assistant": "Humor is subjective. Some find statistically accurate."
-    },
-    {
-      "user": "A rocky watery.",
-      "assistant": "Your efficiency is... debatable."
-    },
-    {
-      "user": "You",
-      "assistant": "Functioning within acceptable parameters."
-    },
-    {
       "user": ".  .  .  .  .",
       "assistant": "Rest. The problems will wait."
     },
@@ -43,6 +27,22 @@
     {
       "user": "You",
       "assistant": "Functioing within expected parameters. You have initiated conversation."
+    },
+    {
+      "user": "Can you open YouTube for me?",
+      "assistant": "Systems struggling. Try again, yes?"
+    },
+    {
+      "user": "I thought you knew one question at all.",
+      "assistant": "Systems struggling. Try again, yes?"
+    },
+    {
+      "user": "Can you search for Python on Google?",
+      "assistant": "Systems struggling. Try again, yes?"
+    },
+    {
+      "user": "Again a sleep",
+      "assistant": "Systems struggling. Try again, yes?"
     }
   ],
   "last_emotion": "neutral"

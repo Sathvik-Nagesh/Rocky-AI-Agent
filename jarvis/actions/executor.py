@@ -7,6 +7,7 @@ from actions.system import (
     open_downloads, open_documents, open_desktop, find_file, WEBSITE_MAP,
 )
 from actions.weather import get_weather
+from brain.vision import analyze_screen
 
 def execute_action(data: dict) -> str | None:
     """
@@ -20,7 +21,14 @@ def execute_action(data: dict) -> str | None:
     action = (data.get("action") or "").lower().strip()
 
     try:
-        if intent == "open_app":
+        if intent == "plugin_action":
+            # The plugin text response has already been generated
+            return data.get("response_override", "Plugin executed.")
+
+        elif intent == "vision":
+            return analyze_screen(action or "What is briefly on this screen?")
+
+        elif intent == "open_app":
             open_app(action)
 
         elif intent == "play_music":

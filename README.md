@@ -1,12 +1,13 @@
-# Rocky — JARVIS-Style Voice Assistant
+# Rocky — AI Voice Assistant
 
-> *"Hello. You appear functional today. Good sign, yes?"*
+> *"It is 2 AM. You are still running. Noted. What do you need?"*
 
-A fully offline, modular, production-quality Python voice assistant inspired by JARVIS and Rocky. Runs entirely on your local machine — no cloud APIs, no subscriptions.
+A fully local, modular AI voice assistant inspired by **JARVIS** and **Rocky from Project Hail Mary**. Runs entirely on your machine — no cloud APIs, no subscriptions, no data leaves your system.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python)
 ![Ollama](https://img.shields.io/badge/LLM-llama3.2%3A3b-green?style=flat-square)
 ![Whisper](https://img.shields.io/badge/STT-faster--whisper-orange?style=flat-square)
+![TTS](https://img.shields.io/badge/TTS-edge--tts-blueviolet?style=flat-square)
 ![UI](https://img.shields.io/badge/UI-PyQt6-purple?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
 
@@ -14,22 +15,24 @@ A fully offline, modular, production-quality Python voice assistant inspired by 
 
 ## Features
 
-| Capability | Tech |
-|---|---|
-| 🎙️ Speech-to-text | `faster-whisper` (local, offline) |
-| 🧠 LLM brain | `llama3.2:3b` via Ollama (local) |
-| 🔊 Text-to-speech | Windows SAPI5 via `win32com` |
-| 🖥️ JARVIS HUD overlay | PyQt6 — frameless, glassmorphism, always-on-top |
-| 🌊 Real mic waveform | Live RMS from `sounddevice.InputStream` |
-| 🧠 Memory | JSON-based — preferences, habits, conversation history |
-| 😐 Emotion detection | Keyword-based mood classifier → adapts Rocky's tone |
-| ⚡ Parallel execution | Action + LLM run simultaneously (no lag) |
-| 🔁 Multi-turn context | Proper `/api/chat` message history — real conversation |
-| 📂 File operations | Open Downloads, Documents, Desktop, find files |
-| 🌤️ Weather | Live via `wttr.in` — no API key needed |
-| ⏰ Reminders | Natural language (e.g. "in 5 minutes") |
-| 🎙️ Wake word | Optional "Hey Rocky" trigger via `tiny.en` Whisper |
-| 🎵 Apple Music | Launch with voice command |
+| Capability | Tech | Description |
+|---|---|---|
+| 🎙️ Voice Activity Detection | `sounddevice` + RMS | Records only when you speak, stops on silence |
+| 🧠 LLM Brain | `llama3.2:3b` via Ollama | Multi-turn conversation with JSON schema enforcement |
+| 🔊 Neural TTS | `edge-tts` (Microsoft Neural) | Natural human-like voice with SAPI5 offline fallback |
+| 🖥️ JARVIS HUD | PyQt6 glassmorphism overlay | Waveform, typing animation, dynamic info bar |
+| 🧠 Semantic Memory | ChromaDB vector database | Infinite memory without bloating the LLM context |
+| 📂 Document RAG | ChromaDB + file ingestion | Ask questions about your own local files |
+| 👁️ Vision | `pyautogui` + LLaVA | "What's on my screen?" — screenshot analysis |
+| 🔍 Web Research | DuckDuckGo + BeautifulSoup | Rocky silently reads articles and speaks the answer |
+| 🖥️ Agentic Terminal | Sandboxed subprocess | Rocky writes and executes scripts with your permission |
+| 👀 Passive Observer | `pygetwindow` | Monitors your active app and nudges you contextually |
+| 🎵 App Control | `subprocess` + protocols | Opens Chrome, Spotify, Apple Music, VS Code, etc. |
+| 🌤️ Weather | `wttr.in` | No API key needed |
+| ⏰ Reminders | `threading.Timer` | Natural language ("in 5 minutes") |
+| 😐 Emotion Sensing | Keyword classifier | Adapts Rocky's tone based on your mood |
+| 🔌 Plugin System | Dynamic module loader | Drop `.py` files in `plugins/` — auto-loaded |
+| 🎙️ Wake Word | `openWakeWord` (ONNX) | ~1% CPU background wake word detection |
 
 ---
 
@@ -38,40 +41,51 @@ A fully offline, modular, production-quality Python voice assistant inspired by 
 ```
 Rocky/
 ├── jarvis/
-│   ├── main.py              # Entry point — Qt app + voice loop
-│   ├── config.py            # All settings in one place
+│   ├── main.py                 # Entry point — Qt app + voice loop
+│   ├── config.py               # All settings in one place
 │   │
 │   ├── voice/
-│   │   ├── input.py         # Mic recording + Whisper STT + real RMS levels
-│   │   ├── output.py        # SAPI5 text-to-speech singleton
-│   │   └── wake_word.py     # Background "Hey Rocky" detector
+│   │   ├── input.py            # VAD-based recording + Whisper STT
+│   │   ├── output.py           # edge-tts neural voice + SAPI5 fallback
+│   │   └── wake_word.py        # openWakeWord background detector
 │   │
 │   ├── brain/
-│   │   ├── llm.py           # Ollama /api/chat — multi-turn conversation
-│   │   ├── emotion.py       # Keyword emotion classifier
-│   │   └── prompt.txt       # Rocky's system prompt
+│   │   ├── llm.py              # Ollama /api/chat — JSON schema enforced
+│   │   ├── emotion.py          # Keyword emotion classifier
+│   │   ├── vision.py           # Screenshot → LLaVA analysis
+│   │   ├── observer.py         # Passive active-window monitoring
+│   │   ├── file_rag.py         # Local document ingestion + RAG
+│   │   └── prompt.txt          # Rocky's personality prompt
 │   │
 │   ├── utils/
-│   │   ├── intent.py        # Keyword-based intent routing
-│   │   └── parser.py        # JSON extraction with truncation repair
+│   │   ├── intent.py           # Keyword-based intent routing
+│   │   └── parser.py           # JSON extraction with repair + fallback
 │   │
 │   ├── actions/
-│   │   ├── executor.py      # Routes intent → action module
-│   │   ├── system.py        # App launcher, file ops, system control
-│   │   ├── weather.py       # wttr.in live weather
-│   │   └── reminders.py     # Threading-based reminder system
+│   │   ├── executor.py         # Routes intent → action module
+│   │   ├── system.py           # App launcher, navigation, system control
+│   │   ├── weather.py          # wttr.in live weather
+│   │   ├── reminders.py        # Threading-based reminder system
+│   │   ├── terminal.py         # Agentic script generation + execution
+│   │   └── plugins_manager.py  # Dynamic plugin loader
 │   │
 │   ├── memory/
-│   │   ├── memory.json      # Persistent memory store
-│   │   └── memory_manager.py # Atomic read/write, history, preferences
+│   │   ├── memory.json         # Short-term preferences & habits
+│   │   ├── memory_manager.py   # Atomic read/write
+│   │   ├── vector_db.py        # ChromaDB semantic memory
+│   │   └── chroma_db/          # Persistent vector store
 │   │
 │   ├── ui/
-│   │   ├── main_window.py   # JARVIS HUD — waveform, status dot, glassmorphism
-│   │   ├── signals.py       # Qt signals for thread-safe UI updates
-│   │   └── styles.qss       # Stylesheet — electric cyan, dark glass
+│   │   ├── main_window.py      # JARVIS HUD — waveform, info bar, typing
+│   │   ├── signals.py          # Qt signals for thread-safe updates
+│   │   └── styles.qss          # Iron Man Mark 85 stylesheet
 │   │
-│   ├── requirements.txt
-│   └── rocky.log            # Auto-generated log file
+│   └── requirements.txt
+│
+├── plugins/                    # Drop custom extensions here
+│   └── web_research.py         # Autonomous web research plugin
+│
+└── README.md
 ```
 
 ---
@@ -81,12 +95,12 @@ Rocky/
 ### Prerequisites
 - Python 3.10+
 - [Ollama](https://ollama.com) installed and running
-- Windows (for SAPI5 TTS and Apple Music support)
+- Windows 10/11
 
 ### 1. Clone the repo
 ```bash
 git clone https://github.com/Sathvik-Nagesh/Rocky-AI-Agent
-cd Jarvis
+cd Rocky
 ```
 
 ### 2. Create a virtual environment
@@ -100,12 +114,13 @@ python -m venv .venv
 pip install -r jarvis/requirements.txt
 ```
 
-### 4. Pull the LLM model
+### 4. Pull the LLM models
 ```bash
-ollama pull llama3.2:3b
+ollama pull llama3.2:3b        # Main brain
+ollama pull llava:7b           # Optional: vision capabilities
 ```
 
-### 5. Start Ollama (in a separate terminal)
+### 5. Start Ollama
 ```bash
 ollama serve
 ```
@@ -123,13 +138,22 @@ python main.py
 All settings are in `jarvis/config.py`:
 
 ```python
-MODEL_NAME              = "llama3.2:3b"  # Switch to "gemma4" for more creativity
-WHISPER_MODEL_SIZE      = "base.en"      # "tiny.en" for speed, "small.en" for accuracy
-RECORDING_DURATION_SECONDS = 5           # How long Rocky listens per turn
-ENABLE_WAKE_WORD        = False          # Set True to use "Hey Rocky" trigger
-LLM_NUM_PREDICT         = 150           # Max response tokens
-LLM_TEMPERATURE         = 0.72          # Creativity (0 = robotic, 1 = creative)
+MODEL_NAME         = "llama3.2:3b"        # LLM model
+WHISPER_MODEL_SIZE = "base.en"            # STT accuracy vs speed
+EDGE_TTS_VOICE     = "en-US-AndrewNeural" # Neural voice
+EDGE_TTS_RATE      = "+15%"               # Speaking speed
+ENABLE_WAKE_WORD   = False                # "Hey Jarvis" trigger
+VAD_SILENCE_TIMEOUT = 1.5                 # Seconds of silence to stop recording
+LLM_TEMPERATURE    = 0.72                 # Creativity level
 ```
+
+### Available Voices
+| Voice | Style |
+|---|---|
+| `en-US-AndrewNeural` | Confident, calm, masculine (default) |
+| `en-US-GuyNeural` | Natural American male |
+| `en-GB-RyanNeural` | British / JARVIS-style |
+| `en-US-ChristopherNeural` | Deep, authoritative |
 
 ---
 
@@ -137,27 +161,19 @@ LLM_TEMPERATURE         = 0.72          # Creativity (0 = robotic, 1 = creative)
 
 | Say | What happens |
 |---|---|
+| `"Open YouTube"` | Opens youtube.com directly |
 | `"Open Chrome"` | Launches Google Chrome |
-| `"Open my Downloads"` | Opens Downloads folder |
 | `"Play some music"` | Launches Apple Music |
-| `"Search for Python tutorials"` | Google search opens in browser |
-| `"What's the weather?"` | Fetches live weather from wttr.in |
-| `"Remind me in 10 minutes to take a break"` | Sets a timed reminder |
-| `"What can you do?"` | Rocky explains his capabilities |
-| `"Forget everything"` | Clears conversation memory |
-| `"Goodbye"` | Shuts Rocky down |
-
----
-
-## JARVIS HUD
-
-The overlay window:
-- **Frameless + always on top** — sits over any window
-- **Glassmorphism** — deep space dark with electric cyan accents
-- **Live waveform** — 18 bars driven by real microphone RMS levels
-- **Pulsing status dot** — cyan=listening, blue=thinking, green=speaking
-- **Fade-in animation** on launch
-- **Drag to move** — click anywhere on the panel to reposition
+| `"Search for black holes"` | Google search |
+| `"Find out about SpaceX"` | **Autonomous web research** — reads articles aloud |
+| `"What's on my screen?"` | **Vision** — analyzes screenshot |
+| `"What's the weather?"` | Live weather from wttr.in |
+| `"Remind me in 10 minutes"` | Timed voice reminder |
+| `"Learn my files"` | **Ingests** your Documents folder into memory |
+| `"Clean up my downloads"` | **Agentic terminal** — writes + runs a script |
+| `"What can you do?"` | Lists capabilities |
+| `"Forget everything"` | Clears all memory |
+| `"Goodbye"` | Shuts down |
 
 ---
 
@@ -167,66 +183,74 @@ The overlay window:
 [Microphone]
      │
      ▼
-[voice/input.py] ──RMS──► [UI Waveform]
+[VAD Listener] ──RMS──► [UI Waveform]
      │
      ▼ transcribed text
-[utils/intent.py]
+[Intent Detector] ─── plugin check ──► [Plugin Manager]
+     │                  vision check ──► [Vision / LLaVA]
      │
-     ├── Keyword match ──► [actions/executor.py] ──┐
-     │                     [brain/llm.py]  ◄────── │ (parallel)
-     │                                             ▼
-     └── Chat only ───────► [brain/llm.py]   response_text
-                                 │                  │
-                                 ▼                  ▼
-                          [utils/parser.py]   [voice/output.py]
-                                 │                  │
-                                 ▼                  ▼
-                          [memory/ manager]   [SAPI5 TTS]
+     ├── Keyword match ──► [Executor] ──► [Actions]
+     │                     [LLM]        (speak first, act in background)
+     │
+     └── Chat ──► [LLM + Document RAG + Semantic Memory]
+                       │
+                       ▼
+                 [Parser] → [edge-tts] → [Speaker]
+                       │
+                       ▼
+              [ChromaDB + memory.json]
+
+[AppObserver] ──────────► passive nudges ──► [UI Info Bar]
 ```
 
 ---
 
 ## Memory System
 
-Rocky remembers across sessions:
+### Short-term (memory.json)
+Preferences, habits, emotion, last 10 conversation turns. Atomic writes prevent corruption.
 
-```json
-{
-  "user_preferences": { "music_app": "apple_music" },
-  "habits": { "gym_skipped": 2, "working_late": 1 },
-  "last_emotion": "neutral",
-  "history": [
-    { "user": "hi", "assistant": "Hello. Functioning well." }
-  ]
-}
-```
+### Long-term (ChromaDB)
+Every conversation is vector-embedded. When you ask a question, Rocky semantically retrieves only the most relevant 2-3 past memories — infinite history without slowing down.
 
-Writes are **atomic** (temp file → rename) so memory never corrupts on crash.
-Last 5 conversation turns are injected directly into the LLM's message history.
+### Document RAG
+Say *"Learn my files"* — Rocky ingests your `Documents` folder. Then ask questions: *"What was the deadline in that proposal?"*
 
 ---
 
-## What's Coming (Phase 5+)
+## Plugin System
 
-- [ ] Screen reader — "what's on my screen?"
-- [ ] Clipboard integration — "read my clipboard / copy this"
-- [ ] System monitor — "what's my CPU usage?"
-- [ ] Custom wake word training
-- [ ] Plugin system for user-defined actions
-- [ ] Multi-language support via Whisper's multilingual models
+Drop a `.py` file in the `plugins/` directory:
+
+```python
+# plugins/my_plugin.py
+KEYWORDS = ["turn on lights", "lights on"]
+
+def execute(query: str) -> str:
+    # Your smart home / API code here
+    return "Lights turned on."
+```
+
+Rocky auto-loads it on startup and routes matching queries to your function.
 
 ---
 
 ## Requirements
 
 ```
-faster-whisper     # Local speech-to-text
-sounddevice        # Mic recording + real-time RMS
-numpy              # Audio processing
-scipy              # WAV file writing
-requests           # Ollama API + weather
-pywin32            # Windows SAPI5 TTS
-PyQt6              # JARVIS HUD overlay
+faster-whisper        # Local speech-to-text
+sounddevice           # Mic recording + VAD
+numpy / scipy         # Audio processing
+requests              # API calls
+pywin32               # SAPI5 fallback TTS
+PyQt6                 # JARVIS HUD
+edge-tts              # Microsoft Neural TTS
+pygame-ce             # Audio playback
+chromadb              # Vector semantic memory
+pyautogui             # Screenshot capture
+pygetwindow           # Active window monitoring
+beautifulsoup4        # Web scraping
+duckduckgo-search     # Private web search
 ```
 
 ---
@@ -237,4 +261,4 @@ MIT — do whatever you want with it.
 
 ---
 
-*Built with Python, running entirely offline. No data leaves your machine.*
+*Built with Python, running entirely locally. Zero cloud dependency. Your data never leaves your machine.*

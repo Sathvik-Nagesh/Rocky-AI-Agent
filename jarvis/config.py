@@ -9,12 +9,18 @@ OLLAMA_API_GEN  = f"{OLLAMA_API_BASE}/api/generate"   # legacy, kept for referen
 MODEL_NAME = "llama3.2:3b"
 
 # --- Whisper settings ---
-# "tiny.en" = fastest, "base.en" = balanced, "small.en" = most accurate
-WHISPER_MODEL_SIZE = "base.en"
+# "tiny" / "base" / "small" (multilingual) 
+# Note: dropping the '.en' suffix enables multi-language support.
+WHISPER_MODEL_SIZE = "base"
 
 # --- Recording settings ---
 RECORDING_DURATION_SECONDS = 5
 RECORDING_SAMPLE_RATE = 16000
+
+# --- Voice Activity Detection (VAD) ---
+VAD_ENERGY_THRESHOLD = 0.015     # Adjust if environment is noisy
+VAD_SILENCE_TIMEOUT  = 1.5       # Seconds of silence before stopping recording
+VAD_MAX_DURATION     = 15.0      # Hard limit on recording length
 
 # --- TTS settings ---
 # edge-tts voices (primary): change to any Microsoft Neural voice

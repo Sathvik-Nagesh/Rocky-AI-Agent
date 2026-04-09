@@ -6,7 +6,10 @@ import numpy as np
 import sounddevice as sd
 from scipy.io.wavfile import write as wav_write
 from faster_whisper import WhisperModel
-from config import WHISPER_MODEL_SIZE, RECORDING_DURATION_SECONDS, RECORDING_SAMPLE_RATE
+from config import (
+    WHISPER_MODEL_SIZE, RECORDING_SAMPLE_RATE,
+    VAD_ENERGY_THRESHOLD, VAD_SILENCE_TIMEOUT, VAD_MAX_DURATION
+)
 
 print(f"--- Loading Whisper model '{WHISPER_MODEL_SIZE}' (first time may download) ---")
 try:
@@ -18,39 +21,66 @@ except Exception as e:
 
 def listen(on_level=None) -> str:
     """
-    Record from the microphone and return transcribed text.
-
-    Args:
-        on_level: Optional callable(float) — called ~20x/sec during recording
-                  with RMS 0.0–1.0 so the UI waveform can react to real mic input.
-    Returns:
-        Transcribed string, or empty string on failure.
+    Record from the microphone dynamically until silence is detected.
+    Returns transcribed text.
     """
     if _model is None:
         logging.error("Whisper model not loaded.")
         return ""
 
-    fs       = RECORDING_SAMPLE_RATE
-    duration = RECORDING_DURATION_SECONDS
-    print(f"\n[LISTENING] Recording for {duration}s... (Speak now)")
-
+    fs = RECORDING_SAMPLE_RATE
     frames: list[np.ndarray] = []
     temp_path = None
 
+    # VAD state control
+    speaking_started = False
+    silence_start_time = None
+    start_time = time.time()
+    
+    print("\n[LISTENING] Waiting for speech...")
+
     try:
-        # Use a streaming InputStream so we can compute RMS in real time
-        # while also collecting frames for Whisper transcription.
         def _callback(indata: np.ndarray, frame_count, time_info, status):
+            nonlocal speaking_started, silence_start_time
+            if status:
+                logging.warning(status)
+            
+            # Record frame
             frames.append(indata.copy())
+            
+            # Compute energy (RMS)
+            rms = float(np.sqrt(np.mean(indata ** 2)))
             if on_level:
-                rms = float(np.sqrt(np.mean(indata ** 2)))
-                on_level(min(1.0, rms * 25))  # scale to 0–1
+                on_level(min(1.0, rms * 25))
+
+            current_time = time.time()
+            if rms > VAD_ENERGY_THRESHOLD:
+                if not speaking_started:
+                    print("  [VAD] Speech detected. Recording...")
+                    speaking_started = True
+                silence_start_time = None
+            else:
+                if speaking_started and silence_start_time is None:
+                    silence_start_time = current_time
 
         with sd.InputStream(samplerate=fs, channels=1, dtype="float32",
                             blocksize=1024, callback=_callback):
-            time.sleep(duration)
+            while True:
+                time.sleep(0.1)
+                now = time.time()
+                
+                # Check 1: We've been recording for way too long (hard stop)
+                if now - start_time > VAD_MAX_DURATION:
+                    print("  [VAD] Max duration reached.")
+                    break
+                
+                # Check 2: We started speaking, and have now been silent beyond the timeout
+                if speaking_started and silence_start_time is not None:
+                    if now - silence_start_time > VAD_SILENCE_TIMEOUT:
+                        print("  [VAD] Silence detected. Stopping.")
+                        break
 
-        if not frames:
+        if not frames or not speaking_started:
             return ""
 
         print("[PROCESS] Transcribing...")
@@ -68,7 +98,9 @@ def listen(on_level=None) -> str:
         return ""
     finally:
         if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
-        # Signal waveform to idle
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
         if on_level:
             on_level(0.0)

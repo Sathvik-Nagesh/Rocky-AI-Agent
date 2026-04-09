@@ -7,3 +7,8 @@ pywin32
 PyQt6
 edge-tts
 pygame-ce
+chromadb
+pyautogui
+pygetwindow
+beautifulsoup4
+duckduckgo-search

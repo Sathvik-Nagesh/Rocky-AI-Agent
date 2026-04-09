@@ -8,6 +8,16 @@ from actions.system import WEBSITE_MAP
 def detect_intent(text: str) -> dict | None:
     lowered = text.lower().strip()
 
+    # ── Plugins (Dynamic Extensions) ──────────────────────────────────────────
+    from actions.plugins_manager import run_plugin
+    plugin_res = run_plugin(lowered)
+    if plugin_res is not None:
+        return {"intent": "plugin_action", "action": lowered, "response_override": plugin_res}
+
+    # ── Vision / Screen context ───────────────────────────────────────────────
+    if any(t in lowered for t in ["what's on my screen", "what is on my screen", "look at my screen", "read my screen", "analyze my screen"]):
+        return {"intent": "vision", "action": lowered}
+
     # ── Website navigation (must be before search) ────────────────────────────
     # "open youtube" / "go to youtube" / "take me to youtube"
     _nav_triggers = ("open", "go to", "take me to", "navigate to", "launch", "visit")

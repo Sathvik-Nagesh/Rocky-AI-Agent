@@ -1,6 +1,13 @@
 """
-Rocky JARVIS-style HUD window — Phase 4.
-Features: typing animation, live mic waveform, pulsing dot, glassmorphism, drag-to-move.
+Rocky JARVIS HUD — Phase 7.
+
+Features:
+  - Typing animation for Rocky's responses
+  - Live mic waveform visualizer
+  - Pulsing status dot
+  - Dynamic info bar (shows weather, vision summaries, etc.)
+  - Glassmorphism + drag-to-move
+  - Observation nudge display
 """
 
 import os
@@ -14,12 +21,13 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import (
     Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint,
 )
-from PyQt6.QtGui import QPainter, QColor
+from PyQt6.QtGui import QPainter, QColor, QLinearGradient
 
+# ── Status maps ────────────────────────────────────────────────────────────────
 _STATUS_COLORS = {
     "IDLE":      "#1a3a4a",
-    "LISTENING": "#00c8ff",
-    "THINKING":  "#4080ff",
+    "LISTENING": "#00dcff",
+    "THINKING":  "#6060ff",
     "SPEAKING":  "#00ff9f",
     "STANDBY":   "#2a2a3a",
 }
@@ -33,10 +41,10 @@ _STATUS_TEXT = {
 
 # ── Waveform ───────────────────────────────────────────────────────────────────
 class WaveformWidget(QWidget):
-    BAR_COUNT = 20
+    BAR_COUNT = 24
     BAR_W     = 3
-    BAR_GAP   = 3
-    MAX_H     = 32
+    BAR_GAP   = 2
+    MAX_H     = 36
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -48,7 +56,7 @@ class WaveformWidget(QWidget):
         self.setFixedSize(total_w, self.MAX_H + 4)
         t = QTimer(self)
         t.timeout.connect(self._step)
-        t.start(45)
+        t.start(40)
 
     def set_active(self, active: bool):
         self._active = active
@@ -59,18 +67,18 @@ class WaveformWidget(QWidget):
         mid = self.BAR_COUNT // 2
         for i in range(self.BAR_COUNT):
             dist = abs(i - mid) / mid
-            noise = random.uniform(0.0, 0.25)
+            noise = random.uniform(0.0, 0.2)
             self._target[i] = max(0.05, level * (1 - dist * 0.4) + noise)
 
     def _step(self):
         self._tick += 1
         for i in range(self.BAR_COUNT):
             if self._active:
-                drift = math.sin(self._tick * 0.12 + i * 0.45) * 0.1
+                drift = math.sin(self._tick * 0.12 + i * 0.45) * 0.08
                 self._target[i] = max(0.04, min(1.0, self._target[i] + drift))
             else:
                 self._target[i] = 0.04 + math.sin(self._tick * 0.05 + i * 0.3) * 0.02
-            self._bars[i] += (self._target[i] - self._bars[i]) * 0.3
+            self._bars[i] += (self._target[i] - self._bars[i]) * 0.25
         self.update()
 
     def paintEvent(self, _):
@@ -81,8 +89,12 @@ class WaveformWidget(QWidget):
             bar_h = max(2, int(level * self.MAX_H))
             x = i * (self.BAR_W + self.BAR_GAP)
             y = (h - bar_h) // 2
-            alpha = int(60 + level * 195)
-            p.setBrush(QColor(0, 200, 255, alpha))
+            alpha = min(255, int(60 + level * 195))
+            # Gradient from cyan to teal across bars
+            r = int(0 + (i / self.BAR_COUNT) * 20)
+            g = int(180 + (i / self.BAR_COUNT) * 40)
+            b = 255
+            p.setBrush(QColor(r, g, b, alpha))
             p.setPen(Qt.PenStyle.NoPen)
             p.drawRoundedRect(x, y, self.BAR_W, bar_h, 2, 2)
         p.end()
@@ -105,7 +117,7 @@ class StatusDot(QWidget):
         self.update()
 
     def _pulse(self):
-        step = 7
+        step = 6
         self._alpha = (self._alpha + step) if self._up else (self._alpha - step)
         if self._alpha >= 255:
             self._alpha = 255
@@ -131,12 +143,13 @@ class RockyWindow(QWidget):
 
     def __init__(self, signals):
         super().__init__()
-        self._signals   = signals
-        self._drag_pos  = QPoint()
+        self._signals  = signals
+        self._drag_pos = QPoint()
+
         # Typing animation state
-        self._type_full_text  = ""
-        self._type_idx        = 0
-        self._type_timer      = QTimer(self)
+        self._type_full_text = ""
+        self._type_idx       = 0
+        self._type_timer     = QTimer(self)
         self._type_timer.timeout.connect(self._type_step)
 
         self._init_window()
@@ -154,28 +167,28 @@ class RockyWindow(QWidget):
             Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setMinimumWidth(440)
-        self.setMaximumWidth(500)
+        self.setMinimumWidth(460)
+        self.setMaximumWidth(520)
         # Bottom-right of screen
         from PyQt6.QtWidgets import QApplication
         geo = QApplication.primaryScreen().availableGeometry()
-        self.move(geo.width() - 520, geo.height() - 340)
+        self.move(geo.width() - 540, geo.height() - 420)
 
     def _build_ui(self):
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(14, 14, 14, 14)
+        outer.setContentsMargins(12, 12, 12, 12)
 
         panel = QFrame(self)
         panel.setObjectName("mainPanel")
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(22, 16, 22, 20)
+        layout.setContentsMargins(24, 18, 24, 22)
         layout.setSpacing(0)
 
         # ── Header ────────────────────────────────────────────────────────────
         header = QHBoxLayout()
         self._dot = StatusDot(panel)
         header.addWidget(self._dot)
-        header.addSpacing(6)
+        header.addSpacing(8)
 
         self._status_lbl = QLabel("IDLE", panel)
         self._status_lbl.setObjectName("statusLabel")
@@ -189,18 +202,18 @@ class RockyWindow(QWidget):
 
         self._close_btn = QPushButton("×", panel)
         self._close_btn.setObjectName("closeBtn")
-        self._close_btn.setFixedSize(24, 24)
+        self._close_btn.setFixedSize(26, 26)
         self._close_btn.clicked.connect(self.close)
         header.addWidget(self._close_btn)
         layout.addLayout(header)
 
-        # Divider
+        # ── Divider ───────────────────────────────────────────────────────────
         layout.addSpacing(10)
         div = QFrame(panel)
         div.setObjectName("divider")
         div.setFrameShape(QFrame.Shape.HLine)
         layout.addWidget(div)
-        layout.addSpacing(14)
+        layout.addSpacing(12)
 
         # ── Waveform ──────────────────────────────────────────────────────────
         wave_row = QHBoxLayout()
@@ -213,16 +226,17 @@ class RockyWindow(QWidget):
 
         # ── User text ─────────────────────────────────────────────────────────
         user_row = QHBoxLayout()
+        user_row.setAlignment(Qt.AlignmentFlag.AlignTop)
         prefix_u = QLabel("YOU", panel)
         prefix_u.setObjectName("prefixLabel")
         self._user_lbl = QLabel("...", panel)
         self._user_lbl.setObjectName("userLabel")
         self._user_lbl.setWordWrap(True)
         user_row.addWidget(prefix_u)
-        user_row.addSpacing(10)
+        user_row.addSpacing(12)
         user_row.addWidget(self._user_lbl, 1)
         layout.addLayout(user_row)
-        layout.addSpacing(10)
+        layout.addSpacing(12)
 
         # ── AI response ───────────────────────────────────────────────────────
         ai_row = QHBoxLayout()
@@ -232,11 +246,30 @@ class RockyWindow(QWidget):
         self._ai_lbl = QLabel("...", panel)
         self._ai_lbl.setObjectName("aiLabel")
         self._ai_lbl.setWordWrap(True)
-        self._ai_lbl.setMinimumHeight(48)
+        self._ai_lbl.setMinimumHeight(52)
         ai_row.addWidget(prefix_r)
-        ai_row.addSpacing(10)
+        ai_row.addSpacing(12)
         ai_row.addWidget(self._ai_lbl, 1)
         layout.addLayout(ai_row)
+        layout.addSpacing(8)
+
+        # ── Dynamic Info Bar (weather, research results, vision) ──────────────
+        div2 = QFrame(panel)
+        div2.setObjectName("divider")
+        div2.setFrameShape(QFrame.Shape.HLine)
+        layout.addWidget(div2)
+        layout.addSpacing(8)
+
+        info_row = QHBoxLayout()
+        info_prefix = QLabel("ℹ", panel)
+        info_prefix.setObjectName("infoPrefix")
+        self._info_lbl = QLabel("Systems nominal.", panel)
+        self._info_lbl.setObjectName("infoLabel")
+        self._info_lbl.setWordWrap(True)
+        info_row.addWidget(info_prefix)
+        info_row.addSpacing(8)
+        info_row.addWidget(self._info_lbl, 1)
+        layout.addLayout(info_row)
 
         outer.addWidget(panel)
 
@@ -253,6 +286,8 @@ class RockyWindow(QWidget):
         self._signals.user_text.connect(self._on_user)
         self._signals.ai_text.connect(self._on_ai)
         self._signals.wave_tick.connect(self._on_wave)
+        self._signals.info_text.connect(self._on_info)
+        self._signals.observation.connect(self._on_observation)
 
     # ── Signal slots ──────────────────────────────────────────────────────────
     def _on_status(self, status: str):
@@ -264,12 +299,11 @@ class RockyWindow(QWidget):
         self._user_lbl.setText(text)
 
     def _on_ai(self, text: str):
-        # Start typing animation
         self._type_timer.stop()
         self._type_full_text = text
-        self._type_idx       = 0
+        self._type_idx = 0
         self._ai_lbl.setText("")
-        self._type_timer.start(18)  # ~55 chars/sec
+        self._type_timer.start(18)
 
     def _type_step(self):
         self._type_idx += 1
@@ -279,6 +313,13 @@ class RockyWindow(QWidget):
 
     def _on_wave(self, level: float):
         self._wave.set_level(level)
+
+    def _on_info(self, text: str):
+        self._info_lbl.setText(text)
+
+    def _on_observation(self, text: str):
+        """Show observer nudge in info bar with distinct styling."""
+        self._info_lbl.setText(f"💡 {text}")
 
     # ── Fade-in ────────────────────────────────────────────────────────────────
     def _fade_in(self):
