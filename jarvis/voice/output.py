@@ -20,7 +20,67 @@ import tempfile
 import threading
 import logging
 
-from config import TTS_RATE, TTS_VOLUME, EDGE_TTS_VOICE, EDGE_TTS_RATE
+from config import TTS_RATE, TTS_VOLUME, EDGE_TTS_VOICE, EDGE_TTS_RATE, ENABLE_PIPER_TTS, PIPER_VOICE_MODEL
+from utils.piper_downloader import get_piper_model
+
+# ── Piper TTS ──────────────────────────────────────────────────────────────────
+_piper_voice = None
+_piper_lock = threading.Lock()
+
+def _ensure_piper():
+    global _piper_voice
+    if _piper_voice:
+        return True
+    with _piper_lock:
+        if _piper_voice:
+            return True
+        try:
+            import piper
+            onnx, config_json = get_piper_model(PIPER_VOICE_MODEL)
+            if onnx and config_json:
+                _piper_voice = piper.PiperVoice.load(onnx, config_json)
+                logging.info(f"Piper neural voice loaded: {PIPER_VOICE_MODEL}")
+                return True
+        except Exception as e:
+            logging.error(f"Piper TTS init failed: {e}")
+    return False
+
+def _piper_speak(text: str):
+    import wave
+    import pygame
+    tmp_path = None
+    try:
+        if not _ensure_piper():
+            raise RuntimeError("Piper voice model unavailable")
+
+        # Use NamedTemporaryFile to avoid mkstemp descriptor race conditions
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
+            tmp_path = tf.name
+            tf.close()
+        
+        with wave.open(tmp_path, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(_piper_voice.config.sample_rate)
+            _piper_voice.synthesize(text, w)
+
+        if not _ensure_pygame():
+            raise RuntimeError("pygame not available")
+
+        pygame.mixer.music.load(tmp_path)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy():
+            pygame.time.wait(40)
+
+    except Exception as e:
+        logging.error(f"Piper playback failed: {e} - falling back to edge-tts")
+        _edge_speak(text)
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
 
 # ── pygame-ce init (done once) ─────────────────────────────────────────────────
 _pygame_ready = False
@@ -48,8 +108,11 @@ async def _edge_generate(text: str) -> str:
     """Generate MP3 via edge-tts, save to temp file, return path."""
     import edge_tts
     communicate = edge_tts.Communicate(text, voice=EDGE_TTS_VOICE, rate=EDGE_TTS_RATE)
-    fd, tmp_path = tempfile.mkstemp(suffix=".mp3")
-    os.close(fd)
+    
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tf:
+        tmp_path = tf.name
+        tf.close()
+        
     await communicate.save(tmp_path)
     return tmp_path
 
@@ -84,6 +147,8 @@ def _edge_speak(text: str):
 def _sapi5_speak(text: str):
     try:
         import win32com.client
+        import pythoncom
+        pythoncom.CoInitialize()  # Ensure thread safety for COM object
         sp = win32com.client.Dispatch("SAPI.SpVoice")
         sp.Rate   = TTS_RATE
         sp.Volume = TTS_VOLUME
@@ -93,7 +158,10 @@ def _sapi5_speak(text: str):
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 def speak(text: str):
-    """Speak text — tries edge-tts first, then SAPI5."""
+    """Speak text — tries Piper TTS first, then edge-tts, then SAPI5."""
     if not text or not text.strip():
         return
-    _edge_speak(text)
+    if ENABLE_PIPER_TTS:
+        _piper_speak(text)
+    else:
+        _edge_speak(text)

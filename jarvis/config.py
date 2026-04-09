@@ -23,15 +23,16 @@ VAD_SILENCE_TIMEOUT  = 1.5       # Seconds of silence before stopping recording
 VAD_MAX_DURATION     = 15.0      # Hard limit on recording length
 
 # --- TTS settings ---
-# edge-tts voices (primary): change to any Microsoft Neural voice
-#   en-US-AndrewNeural      — confident, calm, masculine (Rocky's voice)
-#   en-US-GuyNeural         — natural American male
-#   en-GB-RyanNeural        — British / JARVIS-style
-#   en-US-ChristopherNeural — deeper, more authoritative
+# Piper TTS (Local Neural Voice) - Fast, GPU accelerated, 100% offline
+ENABLE_PIPER_TTS = True
+PIPER_VOICE_MODEL = "en_GB-alan-medium" # Jarvis-style British Male
+# Options: "en_GB-alan-medium", "en_US-kusal-medium", "en_US-ryan-high"
+
+# edge-tts voices (fallback to Microsoft Neural voice over internet):
 EDGE_TTS_VOICE = "en-US-AndrewNeural"
 EDGE_TTS_RATE  = "+15%"      # speaking pace: "+0%" = default, "+15%" = slightly faster
 
-# SAPI5 fallback (when offline / edge-tts unreachable)
+# SAPI5 fallback (when offline / edge-tts reachable)
 TTS_RATE   = 3    # -10 (slow) to 10 (fast)
 TTS_VOLUME = 100  # 0–100
 

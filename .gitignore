@@ -1,0 +1,43 @@
+# ── Python ──────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual Environment ────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Rocky Runtime Data (NEVER COMMIT) ──────────────────────────────────────────
+jarvis/rocky.log
+jarvis/memory/memory.json
+jarvis/memory/chroma_db/
+jarvis/voice/piper_models/
+jarvis/utils/piper_models/
+
+# ── IDE ─────────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ──────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Temp / Cached audio ────────────────────────────────────────────────────────
+*.mp3
+*.wav
+!jarvis/voice/*.py
+
+# ── Secrets ─────────────────────────────────────────────────────────────────────
+.env
+*.env
+secrets.json

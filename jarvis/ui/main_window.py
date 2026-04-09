@@ -48,56 +48,70 @@ class WaveformWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._bars   = [0.05] * self.BAR_COUNT
-        self._target = [0.05] * self.BAR_COUNT
+        self._bars   = [0.04] * self.BAR_COUNT
+        self._target = [0.04] * self.BAR_COUNT
+        self._level  = 0.0           # raw RMS level from mic, 0.0-1.0
         self._active = False
         self._tick   = 0
         total_w = self.BAR_COUNT * (self.BAR_W + self.BAR_GAP)
         self.setFixedSize(total_w, self.MAX_H + 4)
         t = QTimer(self)
         t.timeout.connect(self._step)
-        t.start(40)
+        t.start(40)   # 25 fps — smooth and cheap
 
     def set_active(self, active: bool):
         self._active = active
+        if not active:
+            self._level = 0.0
 
     def set_level(self, level: float):
-        if not self._active:
-            return
-        mid = self.BAR_COUNT // 2
-        for i in range(self.BAR_COUNT):
-            dist = abs(i - mid) / mid
-            noise = random.uniform(0.0, 0.2)
-            self._target[i] = max(0.05, level * (1 - dist * 0.4) + noise)
+        """Called from voice thread via Qt signal — always accepted."""
+        self._level = max(0.0, min(1.0, level))
 
     def _step(self):
         self._tick += 1
+        mid = self.BAR_COUNT // 2
         for i in range(self.BAR_COUNT):
-            if self._active:
-                drift = math.sin(self._tick * 0.12 + i * 0.45) * 0.08
-                self._target[i] = max(0.04, min(1.0, self._target[i] + drift))
+            if self._active and self._level > 0.02:
+                # Real mic data: spread energy outward from centre with noise
+                dist  = abs(i - mid) / mid
+                noise = random.uniform(-0.05, 0.1)
+                self._target[i] = max(0.04, min(1.0, self._level * (1.0 - dist * 0.45) + noise))
             else:
-                self._target[i] = 0.04 + math.sin(self._tick * 0.05 + i * 0.3) * 0.02
-            self._bars[i] += (self._target[i] - self._bars[i]) * 0.25
-        self.update()
+                # Idle breathing: slow sine wave, very low amplitude
+                self._target[i] = 0.04 + math.sin(self._tick * 0.04 + i * 0.35) * 0.025
+
+            # Exponential smoothing toward target
+            self._bars[i] += (self._target[i] - self._bars[i]) * 0.28
+
+        self.update()   # triggers paintEvent on Qt main thread — safe
 
     def paintEvent(self, _):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         h = self.height()
+        is_hot = self._active and self._level > 0.05
+
         for i, level in enumerate(self._bars):
             bar_h = max(2, int(level * self.MAX_H))
             x = i * (self.BAR_W + self.BAR_GAP)
             y = (h - bar_h) // 2
-            alpha = min(255, int(60 + level * 195))
-            # Gradient from cyan to teal across bars
-            r = int(0 + (i / self.BAR_COUNT) * 20)
-            g = int(180 + (i / self.BAR_COUNT) * 40)
-            b = 255
+            alpha = min(255, int(55 + level * 200))
+
+            if is_hot:
+                # Active: gradient from cyan → teal
+                r = int(0 + (i / self.BAR_COUNT) * 20)
+                g = int(180 + (i / self.BAR_COUNT) * 40)
+                b = 255
+            else:
+                # Idle breathing: dimmer blue-grey
+                r, g, b = 40, 80, 140
+
             p.setBrush(QColor(r, g, b, alpha))
             p.setPen(Qt.PenStyle.NoPen)
             p.drawRoundedRect(x, y, self.BAR_W, bar_h, 2, 2)
         p.end()
+
 
 
 # ── Status dot ─────────────────────────────────────────────────────────────────
@@ -288,6 +302,23 @@ class RockyWindow(QWidget):
         self._signals.wave_tick.connect(self._on_wave)
         self._signals.info_text.connect(self._on_info)
         self._signals.observation.connect(self._on_observation)
+
+    # ── Active Thermal State ──────────────────────────────────────────────────
+    def set_stressed(self, stressed: bool):
+        panel = self.findChild(QFrame, "mainPanel")
+        if not panel: return
+        
+        if stressed:
+            panel.setStyleSheet("""
+                QFrame#mainPanel {
+                    background-color: rgba(18, 4, 4, 0.93);
+                    border: 1px solid rgba(255, 60, 60, 0.60);
+                    border-radius: 22px;
+                    border-bottom: 2px solid rgba(255, 40, 40, 0.85);
+                }
+            """)
+        else:
+            panel.setStyleSheet("") # Reverts to styles.qss rules
 
     # ── Signal slots ──────────────────────────────────────────────────────────
     def _on_status(self, status: str):

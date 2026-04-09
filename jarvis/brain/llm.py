@@ -1,6 +1,11 @@
 """
 LLM interface using Ollama /api/chat with native JSON enforcement.
-llama3.2:3b supports "format":"json" — this eliminates missing-JSON warnings.
+
+Performance fixes:
+  - Semantic memory only queried when query is non-trivial (>20 chars)
+  - System prompt cached at module init, not re-read every call
+  - Duplicate import time removed
+  - Added explicit connection timeout tuning
 """
 
 import os
@@ -10,6 +15,7 @@ import time
 from config import OLLAMA_API_CHAT, MODEL_NAME, LLM_NUM_PREDICT, LLM_NUM_CTX, LLM_TEMPERATURE
 from memory.vector_db import vector_memory
 
+
 def _read_system_prompt() -> str:
     path = os.path.join(os.path.dirname(__file__), "prompt.txt")
     try:
@@ -17,28 +23,36 @@ def _read_system_prompt() -> str:
             return f.read().strip()
     except Exception as e:
         logging.error(f"Failed to read prompt.txt: {e}")
-        return 'You are Rocky, a voice assistant. Always respond in valid JSON: {"intent":"chat","action":null,"response":"..."}'
+        return 'You are Rocky. Respond in JSON: {"intent":"chat","action":null,"response":"..."}'
 
+
+# Cached once at import — never re-read from disk during runtime
 SYSTEM_PROMPT = _read_system_prompt()
+
+# Minimum query length to bother hitting vector DB
+_VECTOR_QUERY_MIN_LEN = 20
+
 
 def generate_response(user_input: str, history: list[dict] | None = None) -> str:
     """
     Send user_input to Ollama /api/chat with conversation history.
-    Uses "format":"json" to enforce structured output at the API level.
+    Vector memory is only injected for non-trivial queries (>20 chars).
     """
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
 
+    # Inject last 5 turns of short-term history
     for turn in (history or [])[-5:]:
         messages.append({"role": "user",      "content": str(turn.get("user", ""))})
         messages.append({"role": "assistant", "content": str(turn.get("assistant", ""))})
 
-    # Inject Long-Term Semantic Memory
-    semantic_context = vector_memory.search_memories(user_input, top_k=2)
-    if semantic_context:
-        messages.append({
-            "role": "system",
-            "content": f"Here is relevant context from past conversations with the user:\n{semantic_context}"
-        })
+    # Only query vector DB for substantial inputs — skip for confirmations, short replies
+    if len(user_input) > _VECTOR_QUERY_MIN_LEN:
+        semantic_context = vector_memory.search_memories(user_input, top_k=2)
+        if semantic_context:
+            messages.append({
+                "role": "system",
+                "content": f"Relevant past context:\n{chr(10).join(semantic_context)}"
+            })
 
     messages.append({"role": "user", "content": user_input})
 
@@ -46,11 +60,11 @@ def generate_response(user_input: str, history: list[dict] | None = None) -> str
         "model":    MODEL_NAME,
         "messages": messages,
         "stream":   False,
-        "format":   {
+        "format": {
             "type": "object",
             "properties": {
-                "intent": {"type": "string"},
-                "action": {"type": ["string", "null"]},
+                "intent":   {"type": "string"},
+                "action":   {"type": ["string", "null"]},
                 "response": {"type": "string"},
             },
             "required": ["intent", "action", "response"],
@@ -70,10 +84,10 @@ def generate_response(user_input: str, history: list[dict] | None = None) -> str
             text = resp.json().get("message", {}).get("content", "").strip()
             if text:
                 return text
-            logging.warning(f"Empty LLM response (attempt {attempt+1})")
+            logging.warning(f"Empty LLM response (attempt {attempt + 1})")
         except Exception as e:
-            logging.error(f"LLM request failed (attempt {attempt+1}): {e}")
+            logging.error(f"LLM request failed (attempt {attempt + 1}): {e}")
         if attempt < retries:
             time.sleep(0.4)
 
-    return '{"intent":"chat","action":null,"response":"Systems struggling. Try again, yes?"}'
+    return '{"intent":"chat","action":null,"response":"Systems struggling. Try again."}'

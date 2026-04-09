@@ -1,9 +1,48 @@
 """
-Keyword-based intent detector — fast, reliable, runs before LLM.
-Order is critical: specific patterns first, generic search last.
+Intent detector — Phase 10: context-aware, negation-safe, confirmation-gated.
+
+Key fixes from Phase 9:
+  - NEGATION GUARD: "I am not asleep" no longer triggers sleep mode.
+    All system-control and destructive keywords now require either:
+      a) A trigger verb ("put", "set", "turn", "go to", "make it") before the keyword, OR
+      b) The keyword to NOT be preceded by negation words ("not", "don't", "no", "isn't", "never").
+  - DANGEROUS ACTION CONFIRMATION: shutdown, restart, sleep return a special
+    "needs_confirmation" flag so main.py can ask "Are you sure?" before executing.
+  - PRIORITY ORDER: Plugins → Vision → Website nav → App open → Music →
+    System (with guards) → Weather → Reminders → Files → Search (last).
 """
+
 import re
 from actions.system import WEBSITE_MAP
+
+# Words that negate the following keyword
+_NEGATION = {"not", "don't", "dont", "no", "never", "isn't", "isnt", "wasn't", "wasnt",
+             "can't", "cant", "shouldn't", "shouldnt", "won't", "wont", "without", "ain't"}
+
+# Actions that require explicit confirmation before executing
+_DANGEROUS_ACTIONS = {"shutdown", "restart", "sleep"}
+
+
+def _has_negation_before(text: str, keyword: str) -> bool:
+    """Check if any negation word appears within 4 words before the keyword."""
+    idx = text.find(keyword)
+    if idx < 0:
+        return False
+    # Get the 4 words before the keyword position
+    before = text[:idx].split()[-4:]
+    return bool(_NEGATION & set(before))
+
+
+def _has_trigger_verb(text: str, keyword: str) -> bool:
+    """Check if a system-control trigger verb appears before the keyword."""
+    triggers = ("put", "set", "make", "switch to", "go to", "turn on", "turn off",
+                "enable", "activate", "initiate", "do a", "please")
+    idx = text.find(keyword)
+    if idx < 0:
+        return False
+    before = text[:idx].strip()
+    return any(t in before for t in triggers)
+
 
 def detect_intent(text: str) -> dict | None:
     lowered = text.lower().strip()
@@ -15,11 +54,15 @@ def detect_intent(text: str) -> dict | None:
         return {"intent": "plugin_action", "action": lowered, "response_override": plugin_res}
 
     # ── Vision / Screen context ───────────────────────────────────────────────
-    if any(t in lowered for t in ["what's on my screen", "what is on my screen", "look at my screen", "read my screen", "analyze my screen"]):
+    _vision_phrases = [
+        "what's on my screen", "what is on my screen", "look at my screen",
+        "read my screen", "analyze my screen", "what do you see",
+        "describe my screen", "screenshot"
+    ]
+    if any(t in lowered for t in _vision_phrases):
         return {"intent": "vision", "action": lowered}
 
     # ── Website navigation (must be before search) ────────────────────────────
-    # "open youtube" / "go to youtube" / "take me to youtube"
     _nav_triggers = ("open", "go to", "take me to", "navigate to", "launch", "visit")
     for trigger in _nav_triggers:
         if trigger in lowered:
@@ -27,7 +70,7 @@ def detect_intent(text: str) -> dict | None:
                 if site in lowered:
                     return {"intent": "navigate", "action": url}
 
-    # "youtube.com" typed / "open youtube.com"
+    # "youtube.com" / "open youtube.com"
     url_match = re.search(r"([\w-]+\.(com|org|net|io|co|in|dev))", lowered)
     if url_match:
         domain = url_match.group(0)
@@ -51,6 +94,14 @@ def detect_intent(text: str) -> dict | None:
         "paint":        ["paint", "mspaint"],
         "terminal":     ["terminal", "command prompt", "cmd", "powershell"],
         "task_manager": ["task manager"],
+        "discord":      ["discord"],
+        "telegram":     ["telegram"],
+        "slack":        ["slack"],
+        "zoom":         ["zoom"],
+        "steam":        ["steam"],
+        "obs":          ["obs", "obs studio"],
+        "blender":      ["blender"],
+        "vlc":          ["vlc", "media player"],
     }
     words = set(lowered.split())
     if _open_triggers & words:
@@ -64,29 +115,60 @@ def detect_intent(text: str) -> dict | None:
     if any(kw in lowered for kw in ["music please", "some music", "play something"]):
         return {"intent": "play_music", "action": "apple_music"}
 
-    # ── System control ────────────────────────────────────────────────────────
+    # ── System control (NEGATION-SAFE + CONFIRMATION-GATED) ───────────────────
     _sys = {
-        "shutdown":    ["shut down", "shutdown", "power off", "turn off the computer"],
-        "restart":     ["restart", "reboot", "restart the computer"],
-        "lock":        ["lock", "lock the screen", "lock screen"],
-        "sleep":       ["sleep", "go to sleep", "hibernate"],
-        "volume_up":   ["volume up", "turn up the volume", "louder", "increase volume"],
-        "volume_down": ["volume down", "lower the volume", "lower volume", "quieter", "turn it down"],
-        "mute":        ["mute", "silence"],
-        "unmute":      ["unmute"],
+        "shutdown":    ["shut down the computer", "shutdown my pc", "power off my computer",
+                        "turn off the computer", "turn off my pc", "shut down my computer"],
+        "restart":     ["restart the computer", "restart my pc", "reboot the computer",
+                        "reboot my computer", "restart my system"],
+        "lock":        ["lock the screen", "lock my screen", "lock my computer", "lock screen",
+                        "lock my pc"],
+        "sleep":       ["put computer to sleep", "put my pc to sleep", "go to sleep mode",
+                        "sleep mode", "hibernate my computer", "hibernate my pc"],
+        "volume_up":   ["volume up", "turn up the volume", "louder", "increase volume",
+                        "raise the volume"],
+        "volume_down": ["volume down", "lower the volume", "lower volume", "quieter",
+                        "turn it down", "decrease volume", "reduce volume"],
+        "mute":        ["mute the sound", "mute audio", "mute everything", "mute my computer"],
+        "unmute":      ["unmute", "unmute audio", "unmute sound"],
     }
-    for action_key, kws in _sys.items():
-        if any(kw in lowered for kw in kws):
-            return {"intent": "system_control", "action": action_key}
+
+    for action_key, phrases in _sys.items():
+        for phrase in phrases:
+            if phrase in lowered:
+                # Check negation — "don't shut down" / "I am not sleeping"
+                if _has_negation_before(lowered, phrase):
+                    break  # Skip this entire action_key, fall through to chat
+
+                result = {"intent": "system_control", "action": action_key}
+
+                # Gate dangerous actions behind confirmation
+                if action_key in _DANGEROUS_ACTIONS:
+                    result["needs_confirmation"] = True
+
+                return result
+
+    # Volume shorthand — only if the user is clearly commanding (not just mentioning)
+    if "volume" in lowered and ("up" in lowered or "louder" in lowered or "increase" in lowered):
+        return {"intent": "system_control", "action": "volume_up"}
+    if "volume" in lowered and ("down" in lowered or "quieter" in lowered or "lower" in lowered or "decrease" in lowered):
+        return {"intent": "system_control", "action": "volume_down"}
+
+    # Standalone "mute" — but ONLY if it looks like a command, not conversation
+    if re.search(r"^(please\s+)?mute\b", lowered):
+        return {"intent": "system_control", "action": "mute"}
+    if re.search(r"^(please\s+)?unmute\b", lowered):
+        return {"intent": "system_control", "action": "unmute"}
 
     # ── Weather ────────────────────────────────────────────────────────────────
-    if any(t in lowered for t in ["weather", "temperature", "how hot", "how cold", "forecast", "raining"]):
+    if any(t in lowered for t in ["weather", "temperature outside", "how hot is it",
+                                   "how cold is it", "forecast", "is it raining"]):
         match = re.search(r"(?:weather|temperature|forecast)\s+(?:in|for|at)\s+([\w\s]+?)(?:\?|$|,)", lowered)
         location = match.group(1).strip() if match else "auto"
         return {"intent": "weather", "action": location}
 
     # ── Reminders ─────────────────────────────────────────────────────────────
-    if re.search(r"\bremind\b|\bset.{0,10}reminder\b", lowered):
+    if re.search(r"\bremind\b|\bset.{0,10}reminder\b|\bset.{0,10}alarm\b|\bwake me\b", lowered):
         return {"intent": "reminder", "action": text}
 
     # ── File operations ───────────────────────────────────────────────────────
@@ -114,7 +196,6 @@ def detect_intent(text: str) -> dict | None:
         m = re.search(pat, lowered)
         if m:
             query = m.group(1).strip().rstrip("?. ")
-            # If the query is a known site name, navigate there instead
             if query in WEBSITE_MAP:
                 return {"intent": "navigate", "action": WEBSITE_MAP[query]}
             return {"intent": "search", "action": query}

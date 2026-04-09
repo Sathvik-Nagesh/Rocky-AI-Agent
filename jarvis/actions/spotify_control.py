@@ -8,11 +8,10 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import logging
 
-# We'll expect these in the environment or set them to placeholders
-# User must provide these for real control.
-CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "your_id_here")
-CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "your_secret_here")
-REDIRECT_URI = "http://localhost:8888/callback"
+# 🛡️ SECURITY: No hardcoded fallbacks to prevent accidental commits of keys
+CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI", "http://localhost:8888/callback")
 
 _sp = None
 
@@ -20,7 +19,7 @@ def _get_spotify():
     global _sp
     if _sp: return _sp
     
-    if "your_id" in CLIENT_ID:
+    if not CLIENT_ID or not CLIENT_SECRET:
         return None
         
     try:

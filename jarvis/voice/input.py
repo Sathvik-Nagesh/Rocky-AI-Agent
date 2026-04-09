@@ -19,14 +19,15 @@ except Exception as e:
     logging.error(f"Whisper model failed to load: {e}")
     _model = None
 
-def listen(on_level=None) -> str:
+def listen(on_level=None) -> tuple[str, np.ndarray | None]:
     """
     Record from the microphone dynamically until silence is detected.
-    Returns transcribed text.
+    Returns (transcribed_text, raw_audio_ndarray).
+    The raw audio is passed to voice emotion analysis.
     """
     if _model is None:
         logging.error("Whisper model not loaded.")
-        return ""
+        return "", None
 
     fs = RECORDING_SAMPLE_RATE
     frames: list[np.ndarray] = []
@@ -81,7 +82,7 @@ def listen(on_level=None) -> str:
                         break
 
         if not frames or not speaking_started:
-            return ""
+            return "", None
 
         print("[PROCESS] Transcribing...")
         recording = np.concatenate(frames, axis=0)
@@ -91,11 +92,12 @@ def listen(on_level=None) -> str:
             wav_write(temp_path, fs, recording)
 
         segments, _ = _model.transcribe(temp_path, beam_size=5)
-        return " ".join(seg.text for seg in segments).strip()
+        text = " ".join(seg.text for seg in segments).strip()
+        return text, recording
 
     except Exception as e:
         logging.error(f"Recording/transcription error: {e}")
-        return ""
+        return "", None
     finally:
         if temp_path and os.path.exists(temp_path):
             try:

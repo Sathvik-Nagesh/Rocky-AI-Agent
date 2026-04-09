@@ -1,14 +1,82 @@
 """
 Agentic Terminal — Rocky writes and executes scripts.
 
-Safety: Rocky ALWAYS asks for confirmation before executing.
-The confirmation flows through a signal back to the voice loop.
+Safety:
+  1. Rocky ALWAYS asks for confirmation before executing.
+  2. Generated code is scanned against a BLOCKLIST of dangerous patterns.
+  3. Execution happens in a sandboxed subprocess with 30-second timeout.
 """
 
 import os
+import re
 import subprocess
 import tempfile
 import logging
+
+import ast
+
+# ── Security Allowlist (Python AST Verification) ────────────────────────────────
+_SAFE_OS_METHODS = {
+    "listdir", "getcwd", "path", "stat", "environ", "getenv",
+    "cpu_count", "urandom", "sep", "linesep", "pathsep"
+}
+_SAFE_SHUTIL_METHODS = {
+    "disk_usage", "which"
+}
+_BLOCKED_MODULES = {"subprocess", "pty", "sys"}
+
+class SecurityVisitor(ast.NodeVisitor):
+    def __init__(self):
+        self.violation = None
+
+    def visit_Import(self, node):
+        for alias in node.names:
+            if alias.name in _BLOCKED_MODULES:
+                self.violation = f"Blocked: importing '{alias.name}' is prohibited."
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node):
+        if node.module in _BLOCKED_MODULES:
+            self.violation = f"Blocked: importing from '{node.module}' is prohibited."
+        self.generic_visit(node)
+
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Attribute):
+            # Check os.* calls
+            if isinstance(node.func.value, ast.Name) and node.func.value.id == "os":
+                if node.func.attr not in _SAFE_OS_METHODS:
+                    self.violation = f"Blocked: os.{node.func.attr} is not on the Allowlist."
+            # Check shutil.* calls
+            if isinstance(node.func.value, ast.Name) and node.func.value.id == "shutil":
+                if node.func.attr not in _SAFE_SHUTIL_METHODS:
+                    self.violation = f"Blocked: shutil.{node.func.attr} is not on the Allowlist."
+        elif isinstance(node.func, ast.Name):
+            # Check for eval/exec
+            if node.func.id in ("eval", "exec", "compile", "__import__"):
+                self.violation = f"Blocked: {node.func.id}() is inherently dangerous."
+        self.generic_visit(node)
+
+def _scan_code(code: str, language: str = "python") -> str | None:
+    """Scan code. For Python, strictly AST Allowlist. For PS1, regex blocklist."""
+    if language.lower() in ("python", "py"):
+        try:
+            tree = ast.parse(code)
+            visitor = SecurityVisitor()
+            visitor.visit(tree)
+            return visitor.violation
+        except SyntaxError:
+            return "Blocked: Python code has invalid syntax."
+    
+    # Fallback for Powershell / Bash
+    bad_patterns = [
+        r"Remove-Item\s+-Recurse", r"rm\s+-rf", r"del\s+/[sS]", 
+        r"format\s+\w:\s*/", r"reg\s+delete", r"taskkill", 
+        r"Format-Volume", r"Stop-Process"
+    ]
+    for pattern in bad_patterns:
+        if re.search(pattern, code, re.IGNORECASE):
+            return f"Blocked: dangerous shell pattern detected (`{pattern}`)."
+    return None
 
 
 def generate_script(task: str) -> dict:
@@ -49,6 +117,12 @@ def execute_script(code: str, language: str = "python") -> str:
     """
     if not code.strip():
         return "No code to execute."
+
+    # 🛡️ SECURITY: Scan code against allowlist
+    violation = _scan_code(code, language)
+    if violation:
+        logging.warning(violation)
+        return violation
 
     try:
         if language.lower() in ("python", "py"):

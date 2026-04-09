@@ -12,3 +12,11 @@ pyautogui
 pygetwindow
 beautifulsoup4
 duckduckgo-search
+psutil
+plyer
+spotipy
+pyperclip
+wolframalpha
+piper-tts
+soundfile
+python-dotenv
