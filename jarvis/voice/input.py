@@ -33,6 +33,10 @@ def listen(on_level=None) -> tuple[str, np.ndarray | None]:
     frames: list[np.ndarray] = []
     temp_path = None
 
+    # Acoustic Shield: Auto-calibrate noise floor
+    noise_samples = []
+    dynamic_threshold = VAD_ENERGY_THRESHOLD
+
     # VAD state control
     speaking_started = False
     silence_start_time = None
@@ -42,20 +46,27 @@ def listen(on_level=None) -> tuple[str, np.ndarray | None]:
 
     try:
         def _callback(indata: np.ndarray, frame_count, time_info, status):
-            nonlocal speaking_started, silence_start_time
+            nonlocal speaking_started, silence_start_time, dynamic_threshold
             if status:
                 logging.warning(status)
             
-            # Record frame
+            # Record frame (Scale check for noise floor)
+            rms = float(np.sqrt(np.mean(indata ** 2)))
+            
+            if not speaking_started and len(noise_samples) < 10:
+                noise_samples.append(rms)
+                if len(noise_samples) == 10:
+                    avg_noise = sum(noise_samples) / 10
+                    dynamic_threshold = max(VAD_ENERGY_THRESHOLD, avg_noise * 1.5)
+                    print(f"  [ACOUSTIC SHIELD] Noise floor calibrated. Threshold: {dynamic_threshold:.4f}")
+
             frames.append(indata.copy())
             
-            # Compute energy (RMS)
-            rms = float(np.sqrt(np.mean(indata ** 2)))
             if on_level:
                 on_level(min(1.0, rms * 25))
 
             current_time = time.time()
-            if rms > VAD_ENERGY_THRESHOLD:
+            if rms > dynamic_threshold:
                 if not speaking_started:
                     print("  [VAD] Speech detected. Recording...")
                     speaking_started = True
@@ -67,7 +78,7 @@ def listen(on_level=None) -> tuple[str, np.ndarray | None]:
         with sd.InputStream(samplerate=fs, channels=1, dtype="float32",
                             blocksize=1024, callback=_callback):
             while True:
-                time.sleep(0.1)
+                time.sleep(0.05)   # Pre-Reflex: High frequency check
                 now = time.time()
                 
                 # Check 1: We've been recording for way too long (hard stop)

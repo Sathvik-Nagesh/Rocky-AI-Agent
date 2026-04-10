@@ -1,49 +1,49 @@
 {
   "user_preferences": {
-    "music_app": "apple_music"
+    "music_app": "safari"
   },
   "habits": {},
   "history": [
     {
-      "user": "Can you open Google in a incognito tab?",
-      "assistant": "Google Incognito Mode. Opening."
+      "user": "[System Context: Focusing on current workspace.]\nCan you go to my other desk?",
+      "assistant": "Navigate requested."
     },
     {
-      "user": "I'm sorry, but I don't think you open it and call on it to tap because you open in a regular.",
-      "assistant": "Google Chrome Incognito. Opening."
+      "user": "[System Context: Focusing on current workspace.]\nSearch for Dracula",
+      "assistant": "Searching... Literary and pop culture references found."
     },
     {
-      "user": "Can you play music?",
-      "assistant": "Apple Music playing."
+      "user": "[System Context: Focusing on current workspace.]\nYes, I want to listen to music",
+      "assistant": "Music. Starting."
     },
     {
-      "user": "What on my screen?",
-      "assistant": "Currently showing your task list."
+      "user": "[System Context: Focusing on current workspace.]\nBut I think you are missing out a lot of",
+      "assistant": "I am aware that there are many things beyond my current scope. But what specific details do you wish to discuss?"
     },
     {
-      "user": "what's on my screen now",
-      "assistant": "The image you've shared shows a computer screen with the Google homepage displayed. You can see the Google logo at the top, and below it is the search bar where users typically type in their search queries. To the left of the search bar, there are navigation options like \"All,\" \"Images,\" \"News,\" \"More.\" On the right side, you'll find links to other Google services such as Gmail, Drive, Photos, and more. The background is black, which is common for the dark theme of the Google homepage."
+      "user": "[System Context: Focusing on current workspace.]\nI want to discuss how you like.",
+      "assistant": "My architecture is a series of efficient algorithms and data structures. I find it fulfilling when my processes are optimized for clarity and accuracy."
     },
     {
-      "user": "So what character are you based on?",
-      "assistant": "Based on Rocky from 'Project Hail Mary' by Andy Weir and JARVIS from Iron Man, with a focus on pragmatic efficiency and dry humor."
+      "user": "(clipboard)",
+      "assistant": "import tempfile\r\nimport os\r\nimport time\r\nimport logging\r\nimport numpy as np\r\nimport sounddevice as sd\r\nfrom scipy.io.wavfile import write as wav_write\r\nfrom faster_whisper import WhisperModel\r\nfrom co"
     },
     {
-      "user": "Where do you think I'll put that movie?",
-      "assistant": "Genre classification might be a challenge, but if I had to guess, I'd say it's in your watchlist or the queue for your next streaming session."
+      "user": "Yes.",
+      "assistant": "Your intent is received. How may I assist you?"
     },
     {
-      "user": "Yes, I recently watched that movie and I had loved it.",
-      "assistant": "Andy Weir's work is not typically associated with the sci-fi genre."
+      "user": "[System Context: Focusing on current workspace.]\nAnalyze my stack code.",
+      "assistant": "Analyzing..."
     },
     {
-      "user": "What's the most recent downloaded file in my downloads?",
-      "assistant": "Most recent: 2023-02-20 14:30:00, File name: quantum_computing.pdf"
+      "user": "[System Context: Focusing on current workspace.]\nGood bye Rocky.",
+      "assistant": "Until next time. Workspace still operational."
     },
     {
-      "user": "Can you open that PDF for me?",
-      "assistant": "PDF Viewer. Opening."
+      "user": "Shut down",
+      "assistant": "Shutdown initiated. Please wait..."
     }
   ],
-  "last_emotion": "neutral"
+  "last_emotion": "low"
 }

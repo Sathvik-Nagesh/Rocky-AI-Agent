@@ -61,6 +61,7 @@ from memory.memory_manager import (
 from memory.vector_db import vector_memory
 from ui.main_window import RockyWindow
 from ui.signals import RockySignals
+from api.server import run_server, update_status, update_stats, update_transcript
 
 logging.basicConfig(
     level=logging.WARNING,          # ← Changed INFO→WARNING to reduce log noise per turn
@@ -154,6 +155,29 @@ def _respond(sig: RockySignals, user_input: str, response_text: str):
     # Only embed non-trivial exchanges in vector DB
     if len(user_input) > 15:
         vector_memory.add_memory(user_input, response_text)
+        
+        # ── Project Cerebro: Fact Extraction ──
+        from brain.llm import extract_facts
+        from memory.knowledge_graph import cerebro
+        facts = extract_facts(user_input, response_text)
+        for (s, r, o) in facts:
+            cerebro.add_fact(s, r, o)
+            
+        # ── Project Empathy: Sentiment/Emotion Aura ──
+        try:
+            from textblob import TextBlob
+            analysis = TextBlob(user_input).sentiment.polarity
+            emotion = "neutral"
+            if analysis > 0.4: emotion = "productive"
+            elif analysis < -0.3: emotion = "stressed"
+            update_emotion(emotion)
+            from voice.output import set_voice_emotion
+            set_voice_emotion(emotion)
+        except:
+            pass
+    
+    # Sync with Omega Dashboard
+    update_transcript(user_input, response_text)
 
 
 # ── Voice worker ───────────────────────────────────────────────────────────────
@@ -176,8 +200,10 @@ class VoiceWorker(QObject):
     def _safe_speak(self, text: str):
         with self._speak_lock:
             self._sig.status_changed.emit("SPEAKING")
+            update_status("SPEAKING")
             speak(text)
             self._sig.status_changed.emit("IDLE")
+            update_status("IDLE")
 
     # ── Intent handlers ───────────────────────────────────────────────────────
 
@@ -264,6 +290,24 @@ class VoiceWorker(QObject):
         self.shadow_learner = ShadowLearner(self._sig)
         self.shadow_learner.start()
 
+        # ── Presence Sensing (The Loyalty Module) ─────────────────────────────
+        from brain.presence import PresenceSensor
+        def _on_presence(evt: str):
+            if evt == "returned":
+                self._sig.ai_text.emit("User detected. Systems active.")
+                self._safe_speak("Welcome back, sir. I'm standing by.")
+            elif evt == "afk":
+                logging.warning("[PRESENCE] User AFK. Entering standby.")
+
+        self.presence = PresenceSensor(on_presence_change=_on_presence)
+        self.presence.start()
+
+        # ── Project Shadow: Screen Sentinel (Proactive OCR) ───────────────────
+        from brain.screen_sentinel import ScreenSentinel
+        from api.server import update_notification
+        self.sentinel = ScreenSentinel(on_insight=update_notification)
+        self.sentinel.start()
+
         # Run self-repair on startup silently
         startup_issues = diagnose()
         if startup_issues:
@@ -330,8 +374,10 @@ class VoiceWorker(QObject):
 
                 # Listen
                 self._sig.status_changed.emit("LISTENING")
+                update_status("LISTENING")
                 user_input, raw_audio = listen(on_level=lambda lvl: self._sig.wave_tick.emit(lvl))
                 self._sig.status_changed.emit("IDLE")
+                update_status("IDLE")
 
                 if not user_input or not user_input.strip():
                     continue
@@ -403,6 +449,8 @@ class VoiceWorker(QObject):
 
                 # ── Hard commands ─────────────────────────────────────────────
                 if any(kw in low for kw in ("shut down rocky", "goodbye", "exit rocky")):
+                    if hasattr(self, "presence"):
+                        self.presence.stop()
                     self._safe_speak("Shutting down. Optimal choice.")
                     if hasattr(self, "shadow_learner"):
                         self.shadow_learner.stop()
@@ -633,6 +681,9 @@ def main():
         from actions.process_control import is_system_stressed
         stressed, _ = is_system_stressed()
         window.set_stressed(stressed)
+        
+        # Sync stats with Omega Dashboard
+        update_stats(stats)
 
     stats_timer = QTimer()
     stats_timer.timeout.connect(_update_stats)
@@ -649,6 +700,10 @@ def main():
     worker.finished.connect(app.quit)
     worker.finished.connect(stats_timer.stop)
     thread.start()
+
+    # Start Omega API server
+    api_thread = threading.Thread(target=run_server, kwargs={"port": 8000}, daemon=True)
+    api_thread.start()
 
     sys.exit(app.exec())
 

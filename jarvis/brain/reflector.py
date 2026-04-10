@@ -22,7 +22,7 @@ def run_reflection():
         # Take the last 20 exchanges
         recent = history[-20:] if len(history) > 20 else history
         
-        reflection_prompt = f\"\"\"
+        reflection_prompt = f"""
         Analyze the following conversation history between a human and an AI assistant named Rocky.
         Identify any mistakes, misinterpretations, or failures to execute capabilities.
         
@@ -33,7 +33,7 @@ def run_reflection():
         
         History:
         {json.dumps(recent, indent=2)}
-        \"\"\"
+        """
         
         raw_rules = generate_response(reflection_prompt, [])
         # Simple extraction

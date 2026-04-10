@@ -92,6 +92,52 @@ def execute_action(data: dict) -> str | None:
                         os.startfile(matches[0])
                         return f"Opening {os.path.basename(matches[0])}"
                     return f"I couldn't find a file named {filename}."
+        
+        elif intent == "system_optimize":
+            from actions.win_opt import optimize_system
+            return optimize_system()
+
+        elif intent == "git_commit":
+            from brain.git_architect import commit_changes
+            return commit_changes(action)
+
+        elif intent == "git_push":
+            from brain.git_architect import push_changes
+            return push_changes(action)
+
+        elif intent == "ghost_protocol":
+            from actions.ghost import initiate_ghost_protocol
+            return initiate_ghost_protocol()
+
+        elif intent == "network_scan":
+            from actions.network_sentry import scan_network
+            return scan_network()
+
+        elif intent == "harvester":
+            from brain.harvester import harvest_directory
+            return harvest_directory(action)
+
+        elif intent == "singularity":
+            from brain.singularity import singularity
+            solution = singularity.ask_the_greater_intelligence(action)
+            # BRUTAL: Automatically evolve a plugin from this solution
+            evo_msg = singularity.evolve_local_plugin(action, solution)
+            return f"{solution}\n\n[EVOLUTION] {evo_msg}"
+
+        elif intent == "genesis":
+            from actions.genesis import initiate_genesis
+            return initiate_genesis(action, data.get("query", ""))
+
+        elif intent == "nexus":
+            from brain.llm import council_debate
+            return council_debate(action)
+
+        elif intent == "omniscience":
+            from brain.terminal_monitor import sniff_active_terminal, analyze_cli_error
+            buffer = sniff_active_terminal()
+            if not buffer: return "I couldn't detect an active terminal window to sniff."
+            fix = analyze_cli_error(buffer)
+            return fix if fix else "Terminal buffer analyzed. No critical errors detected at the tail."
 
     except Exception as e:
         logging.error(f"Action execution error ({intent}/{action}): {e}")

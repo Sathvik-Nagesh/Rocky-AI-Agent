@@ -46,14 +46,19 @@ def open_app(app_name: str, query: str = None):
     """Launch an application by keyword, optionally searching for a query or incognito mode."""
     name = (app_name or "").lower().strip()
     
-    # Handle incognito requests
-    is_incognito = "incognito" in name or (query and "incognito" in query.lower())
+    # Handle incognito requests - catch both explicit "incognito" and inferred private requests
+    is_incognito = "incognito" in name or (query and "incognito" in query.lower()) or "private" in name
 
     # Chrome / Browser
     if "chrome" in name or "google" in name or "browser" in name:
         print(f"[ACTION] Opening Chrome {'Incognito' if is_incognito else ''}")
         if is_incognito:
-            _run(["cmd", "/c", "start", "chrome", "--incognito", query or "https://www.google.com"])
+            url = query or "https://www.google.com"
+            # Extract URL if query contains a search phrase
+            if url.startswith("search"):
+                search_q = url.replace("search", "").replace("for", "").strip()
+                url = f"https://www.google.com/search?q={search_q}"
+            _run(["cmd", "/c", "start", "chrome", "--incognito", url])
         elif query:
             search_q = query.lower().replace("search", "").replace("for", "").strip()
             webbrowser.open(f"https://www.google.com/search?q={search_q}")
@@ -204,8 +209,14 @@ def open_desktop():
     _open_folder("Desktop")
 
 def _open_folder(name: str):
-    path = os.path.join(os.path.expanduser("~"), name)
-    print(f"[ACTION] Opening {name} folder")
+    home = os.path.expanduser("~")
+    local_path = os.path.join(home, name)
+    one_drive_path = os.path.join(home, "OneDrive", name)
+    
+    # Priority: 1. OneDrive (Active for most users) -> 2. Local fallback
+    path = one_drive_path if os.path.exists(one_drive_path) else local_path
+    
+    print(f"[ACTION] Opening {name} folder at: {path}")
     os.startfile(path)
 
 def find_file(filename: str) -> list:

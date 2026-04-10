@@ -21,7 +21,24 @@ import threading
 import logging
 
 from config import TTS_RATE, TTS_VOLUME, EDGE_TTS_VOICE, EDGE_TTS_RATE, ENABLE_PIPER_TTS, PIPER_VOICE_MODEL
-from utils.piper_downloader import get_piper_model
+
+# ── Global Emotion Context ─────────────────────────────────────────────────────
+# This allows the voice to react to the HUD state in App.tsx
+_current_emotion = "neutral"
+
+def set_voice_emotion(emotion: str):
+    global _current_emotion
+    _current_emotion = emotion
+
+def _get_emotion_modifiers():
+    """Adjusts rate and volume based on detected sentiment."""
+    if _current_emotion == "stressed":
+        return {"rate": 20, "volume": 100} # Urgent
+    if _current_emotion == "productive":
+        return {"rate": 10, "volume": 90}  # Efficient
+    if _current_emotion == "alert":
+        return {"rate": 0, "volume": 100}   # Authoritative
+    return {"rate": 0, "volume": 90}       # Neutral
 
 # ── Piper TTS ──────────────────────────────────────────────────────────────────
 _piper_voice = None
@@ -154,18 +171,27 @@ def _sapi5_speak(text: str):
         import pythoncom
         pythoncom.CoInitialize()  # Ensure thread safety for COM object
         sp = win32com.client.Dispatch("SAPI.SpVoice")
-        sp.Rate   = TTS_RATE
-        sp.Volume = TTS_VOLUME
+        mods = _get_emotion_modifiers()
+        sp.Rate   = TTS_RATE + mods["rate"]
+        sp.Volume = mods["volume"]
         sp.Speak(text)
     except Exception as e:
         logging.error(f"SAPI5 fallback also failed: {e}")
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 def speak(text: str):
-    """Speak text — tries Piper TTS first, then edge-tts, then SAPI5."""
+    """Speak text locally — prioritize Piper, fallback to SAPI5 (100% Offline)."""
     if not text or not text.strip():
         return
+        
+    print(f"[VOICE] Aura: {_current_emotion} | Rocky: {text}")
+    
+    # ── RVC Bridge Injection ──────────────────────────────────────────
+    # If a local RVC server is detected, we would route the audio there
+    # for voice conversion (e.g. to a JARVIS voice).
+    # ──────────────────────────────────────────────────────────────────
+    
     if ENABLE_PIPER_TTS:
         _piper_speak(text)
     else:
-        _edge_speak(text)
+        _sapi5_speak(text)

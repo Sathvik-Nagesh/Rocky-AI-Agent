@@ -86,3 +86,48 @@ def audit_file(filename: str) -> str:
             pass
 
     return f"Audit for {os.path.basename(filename)}: {audit.strip()}"
+    
+
+def commit_changes(message: str) -> str:
+    """Stage all changes and commit with a message."""
+    if not os.path.exists(".git"):
+        return "Not a git repository."
+    
+    # 1. Stage all
+    _run_git(["add", "."])
+    
+    # 2. Get a better message from LLM if default is generic
+    if not message or len(message) < 5:
+        diff = _run_git(["diff", "--cached"])[:2000]
+        prompt = f"Generate a concise, 1-sentence git commit message for these changes:\n{diff}"
+        message = generate_response(prompt, [])
+        if message.startswith("{"):
+            import json
+            try: message = json.loads(message).get("response", message)
+            except: pass
+            
+    # 3. Commit
+    result = _run_git(["commit", "-m", message])
+    if "nothing to commit" in result.lower():
+        return "Nothing to commit, working tree clean."
+    
+    return f"Changes committed: {message}"
+
+
+def push_changes(branch: str = "main") -> str:
+    """Push committed changes to origin."""
+    # We use a longer timeout for push as it's a network operation
+    print(f"[GIT] Pushing to origin {branch}...")
+    try:
+        # Check current branch if none provided
+        if not branch or branch == "main":
+            current = _run_git(["rev-parse", "--abbrev-ref", "HEAD"])
+            branch = current or "main"
+            
+        proc = subprocess.run(["git", "push", "origin", branch], capture_output=True, text=True, timeout=30)
+        if proc.returncode == 0:
+            return f"Successfully pushed to origin {branch}."
+        else:
+            return f"Push failed: {proc.stderr.strip()}"
+    except Exception as e:
+        return f"Push operation timed out or failed: {e}"

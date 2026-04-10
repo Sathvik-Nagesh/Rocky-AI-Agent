@@ -23,3 +23,8 @@ python-dotenv
 playwright            # For Autonomous Web Agent
 playwright-stealth    # To prevent bot detection
 watchdog              # For Shadow Learner (FileSystem monitoring)
+fastapi               # Web Dashboard API
+uvicorn               # ASGI Server
+websockets            # Real-time HUD syncing
+opencv-python         # For Presence Sensing
+pytesseract           # For Screen Sentinel OCR

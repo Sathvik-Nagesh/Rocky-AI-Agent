@@ -98,10 +98,38 @@ def run_mercenary_swarm(query: str) -> str:
         # Each agent visits one of the top links
         futures = [executor.submit(run_web_task, query, link) for link in search_links]
         for f in futures:
-            results.append(f.result())
+            res = f.result()
+            if "Data extracted" in res:
+                results.append(res)
 
-    combined = "\n---\n".join(results)
-    return f"Intelligence gathered from {len(results)} sources:\n{combined}"
+    if not results:
+        return "Deep research failed to gather any significant intelligence."
+
+    # Step 3: Intelligence Synthesis
+    from brain.llm import generate_response
+    combined_data = "\n\n".join(results)
+    
+    prompt = (
+        "You are the Scholar Agent, an elite intelligence synthesizer for Rocky.\n"
+        "Analyze the following raw data extracted from multiple web sources.\n"
+        "Synthesize a cohesive, high-level Intelligence Brief in 4-5 bullet points.\n"
+        "Focus on facts, dates, and conclusions. Maintain a confident, professional tone.\n\n"
+        f"Query: {query}\n"
+        f"Raw Data:\n{combined_data[:6000]}"
+    )
+
+    print("[SCHOLAR] Synthesizing report...")
+    synthesis = generate_response(prompt, history=[])
+    
+    # Strip JSON wrapper if exists
+    if synthesis.startswith("{"):
+        import json
+        try:
+            synthesis = json.loads(synthesis).get("response", synthesis)
+        except:
+            pass
+
+    return f"Intelligence Brief for '{query}':\n{synthesis.strip()}"
 
 if __name__ == "__main__":
     # Test

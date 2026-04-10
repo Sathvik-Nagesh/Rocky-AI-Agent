@@ -53,6 +53,21 @@ def detect_intent(text: str) -> dict | None:
     if plugin_res is not None:
         return {"intent": "plugin_action", "action": lowered, "response_override": plugin_res}
 
+    # ── Living Plugins (Self-Written) ──
+    plugin_dir = "jarvis/plugins"
+    if os.path.exists(plugin_dir):
+        for f in os.listdir(plugin_dir):
+            if f.endswith(".py"):
+                p_name = f[:-3].replace("_", " ")
+                if p_name in lowered:
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location(f[:-3], os.path.join(plugin_dir, f))
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    if hasattr(module, "run"):
+                        res = module.run(lowered)
+                        return {"intent": "plugin_action", "action": lowered, "response_override": res}
+
     # ── Vision / Screen context ───────────────────────────────────────────────
     _vision_phrases = [
         "what's on my screen", "what is on my screen", "look at my screen",
@@ -112,21 +127,31 @@ def detect_intent(text: str) -> dict | None:
     if any(kw in lowered for kw in ["daily standup", "generate report", "what did i do today", "work summary"]):
         return {"intent": "system_control", "action": "standup"}
 
-    if any(kw in lowered for kw in ["research", "find out info about", "deep dive into", "tell me more about"]):
+    if any(kw in lowered for kw in ["git commit", "commit my changes", "commit this", "save to git"]):
+        # Extract message if following 'commit'
+        m = re.search(r"commit\s+(?:my changes with message|with message|message|with)?\s*(.+)", lowered)
+        msg = m.group(1).strip() if m else ""
+        return {"intent": "git_commit", "action": msg}
+
+    if any(kw in lowered for kw in ["git push", "push to github", "push my changes", "push this"]):
+        # Extract branch if specified
+        branch = "main"
+        if "to branch" in lowered:
+            branch = lowered.split("to branch")[-1].strip()
+        return {"intent": "git_push", "action": branch}
+
+    # ── Deep Research (Prioritized for shopping/buying) ────────────────────────
+    if any(kw in lowered for kw in ["research", "find out info about", "deep dive into", "tell me more about", "buy a", "price of", "find me a", "looking for a"]):
         # Extract subject
-        subject = lowered.replace("research", "").replace("find out info about", "").strip()
+        subject = lowered.replace("research", "").replace("find out info about", "").replace("find me a", "").replace("buy a", "").strip()
         return {"intent": "deep_research", "action": subject or "general topics"}
 
     if any(p in lowered for p in ["open file", "open the file", "open image", "open document"]):
-            # Extract filename if possible
-            m = re.search(r"open (?:the |that )?(?:file|image|document|photo|video)?\s+([a-zA-Z0-9_\-\.]+)", lowered)
-            if m:
-                return {"intent": "file_operation", "action": f"open:{m.group(1).strip()}"}
-            return {"intent": "file_operation", "action": "open:recent"}
-
-        for app_key, keywords in _apps.items():
-            if any(kw in lowered for kw in keywords):
-                return {"intent": "open_app", "action": app_key}
+        # Extract filename if possible
+        m = re.search(r"open (?:the |that )?(?:file|image|document|photo|video)?\s+([a-zA-Z0-9_\-\.]+)", lowered)
+        if m:
+            return {"intent": "file_operation", "action": f"open:{m.group(1).strip()}"}
+        return {"intent": "file_operation", "action": "open:recent"}
 
     # ── Play music ────────────────────────────────────────────────────────────
     if re.search(r"\b(play|start|put on|turn on)\b.{0,15}\b(music|song|track|playlist)\b", lowered) or \
@@ -139,6 +164,31 @@ def detect_intent(text: str) -> dict | None:
             return {"intent": "play_music", "action": "spotify", "query": text}
             
         return {"intent": "play_music", "action": "apple_music", "query": text}
+
+    if any(kw in lowered for kw in ["ghost protocol", "purge session", "forget everything", "clear logs"]):
+        return {"intent": "ghost_protocol", "action": "stealth"}
+
+    if any(kw in lowered for kw in ["scan my network", "network audit", "who is on my wifi", "check lan"]):
+        return {"intent": "network_scan", "action": "audit"}
+
+    if any(kw in lowered for kw in ["assimilate", "harvest directory", "index my files", "eat my data"]):
+        path = lowered.split("assimilate")[-1].strip() or "."
+        return {"intent": "harvester", "action": path}
+
+    if any(kw in lowered for kw in ["uplink", "consult the singularity", "ask the greater intelligence", "high level solution"]):
+        return {"intent": "singularity", "action": lowered}
+
+    if any(kw in lowered for kw in ["initiate genesis", "summon project", "scaffold", "create repository"]):
+        # Extract project name
+        m = re.search(r"genesis\s+(?:for\s+)?(?:a\s+)?([\w\s]+)", lowered)
+        name = m.group(1).strip() if m else "new_project"
+        return {"intent": "genesis", "action": name, "query": text}
+
+    if any(kw in lowered for kw in ["consult the council", "ask the team", "nexus help", "debate this"]):
+        return {"intent": "nexus", "action": lowered}
+
+    if any(kw in lowered for kw in ["check my terminal", "what's wrong with my console", "can you see the error"]):
+        return {"intent": "omniscience", "action": "sniff"}
 
     # ── System control (NEGATION-SAFE + CONFIRMATION-GATED) ───────────────────
     _sys = {
